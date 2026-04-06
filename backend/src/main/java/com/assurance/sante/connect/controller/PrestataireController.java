@@ -12,7 +12,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/prestataires")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"})
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000", "http://localhost:8084"})
 public class PrestataireController {
 
     private final PrestataireService prestataireService;

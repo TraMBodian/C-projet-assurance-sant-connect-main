@@ -12,7 +12,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/polices")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"})
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000", "http://localhost:8084"})
 public class PoliceController {
 
     private final PoliceService policeService;

@@ -28,6 +28,14 @@ public class AssureService {
     }
 
     public AssureDto createAssure(AssureDto assureDto) {
+        if (assureDto.getNumero() == null || assureDto.getNumero().isBlank()) {
+            throw new IllegalArgumentException("Le numéro d'assuré est requis");
+        }
+
+        assureRepository.findByNumero(assureDto.getNumero()).ifPresent(existing -> {
+            throw new IllegalArgumentException("Un assuré avec ce numéro existe déjà");
+        });
+
         Assure assure = Assure.builder()
             .numero(assureDto.getNumero())
             .nom(assureDto.getNom())
@@ -37,6 +45,13 @@ public class AssureService {
             .statut(Assure.AssureStatut.valueOf(assureDto.getStatut() != null ? assureDto.getStatut() : "ACTIF"))
             .type(Assure.AssureType.valueOf(assureDto.getType() != null ? assureDto.getType() : "FAMILLE"))
             .adresse(assureDto.getAdresse())
+            .prime(assureDto.getPrime())
+            .dateDebut(assureDto.getDateDebut())
+            .dateFin(assureDto.getDateFin())
+            .beneficiaires(assureDto.getBeneficiaires())
+            .secteur(assureDto.getSecteur())
+            .employes(assureDto.getEmployes())
+            .assures(assureDto.getAssures())
             .build();
 
         assure = assureRepository.save(assure);
@@ -52,6 +67,13 @@ public class AssureService {
         if (assureDto.getTelephone() != null) assure.setTelephone(assureDto.getTelephone());
         if (assureDto.getEmail() != null) assure.setEmail(assureDto.getEmail());
         if (assureDto.getAdresse() != null) assure.setAdresse(assureDto.getAdresse());
+        if (assureDto.getPrime() != null) assure.setPrime(assureDto.getPrime());
+        if (assureDto.getDateDebut() != null) assure.setDateDebut(assureDto.getDateDebut());
+        if (assureDto.getDateFin() != null) assure.setDateFin(assureDto.getDateFin());
+        if (assureDto.getBeneficiaires() != null) assure.setBeneficiaires(assureDto.getBeneficiaires());
+        if (assureDto.getSecteur() != null) assure.setSecteur(assureDto.getSecteur());
+        if (assureDto.getEmployes() != null) assure.setEmployes(assureDto.getEmployes());
+        if (assureDto.getAssures() != null) assure.setAssures(assureDto.getAssures());
 
         assure = assureRepository.save(assure);
         return AssureDto.fromEntity(assure);

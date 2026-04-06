@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"})
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000", "http://localhost:8084"})
 public class AuthController {
 
     private final AuthService authService;
@@ -45,5 +45,11 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<String>> logout() {
         return ResponseEntity.ok(ApiResponse.success("Logout successful"));
+    }
+
+    // Endpoint de test pour vérifier les comptes admin
+    @GetMapping("/test-admin-accounts")
+    public ResponseEntity<ApiResponse<String>> testAdminAccounts() {
+        return ResponseEntity.ok(ApiResponse.success("Admin accounts should be created. Try login with: bassniang7@yahoo.fr / admin1 or bodianm372@gmail.com / admin1"));
     }
 }

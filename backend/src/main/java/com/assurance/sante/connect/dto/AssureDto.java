@@ -17,6 +17,13 @@ public class AssureDto {
     private String statut;
     private String type;
     private String adresse;
+    private String prime;
+    private String dateDebut;
+    private String dateFin;
+    private java.util.List<String> beneficiaires;
+    private String secteur;
+    private Integer employes;
+    private Integer assures;
 
     public static AssureDto fromEntity(Assure assure) {
         return AssureDto.builder()
@@ -29,6 +36,13 @@ public class AssureDto {
             .statut(assure.getStatut().name())
             .type(assure.getType().name())
             .adresse(assure.getAdresse())
+            .prime(assure.getPrime())
+            .dateDebut(assure.getDateDebut())
+            .dateFin(assure.getDateFin())
+            .beneficiaires(assure.getBeneficiaires())
+            .secteur(assure.getSecteur())
+            .employes(assure.getEmployes())
+            .assures(assure.getAssures())
             .build();
     }
 }

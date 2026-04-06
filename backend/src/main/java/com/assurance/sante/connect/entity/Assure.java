@@ -38,6 +38,19 @@ public class Assure {
 
     private String adresse;
 
+    private String prime;
+    private String dateDebut;
+    private String dateFin;
+
+    @ElementCollection
+    @CollectionTable(name = "assure_beneficiaires", joinColumns = @JoinColumn(name = "assure_id"))
+    @Column(name = "beneficiaire")
+    private java.util.List<String> beneficiaires;
+
+    private String secteur;
+    private Integer employes;
+    private Integer assures;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 
