@@ -8,15 +8,41 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Plus, Search, Building2, Users, TrendingUp, Pencil, Trash2,
-  Calendar, RefreshCw, ShieldCheck, ChevronDown, ChevronUp, Briefcase,
+  Calendar, RefreshCw, ShieldCheck, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { PhotoAvatar } from "@/components/PhotoUpload";
 import {
   GARANTIES_CNART, REAJUSTEMENT_SP,
-  PRIME_ADULTE, PRIME_ADULTE_AGE, TAUX_TAXE,
+  TAUX_TAXE, typeFromDate, TYPE_COLORS,
 } from "./NewFamillePage";
-import { calcDecompteGroupe, type Employe } from "./NewGroupePage";
+import { calcDecomptePopulation, type MembrePopulation } from "./NewGroupePage";
+
+// Adapte l'ancien format (employesDetail) vers MembrePopulation
+function toMembres(groupe: any): MembrePopulation[] {
+  if (groupe.membresDetail?.length) return groupe.membresDetail;
+  if (groupe.employesDetail?.length) {
+    const result: MembrePopulation[] = [];
+    let n = 1;
+    for (const emp of groupe.employesDetail) {
+      result.push({
+        numero: n++, nom: emp.nom, dateNaissance: emp.dateNaissance || "",
+        sexe: "", pieceIdentite: emp.matricule || "", lien: "Employé",
+        dateAdhesion: "", salaire: undefined, garantie: "Standard",
+        type: emp.type || typeFromDate(emp.dateNaissance || ""),
+      });
+      for (const m of (emp.famille || [])) {
+        result.push({
+          numero: n++, nom: m.nom, dateNaissance: m.dateNaissance || "",
+          sexe: "", pieceIdentite: "", lien: m.lien || "Famille",
+          dateAdhesion: "", salaire: undefined, garantie: "Standard",
+          type: m.type || typeFromDate(m.dateNaissance || ""),
+        });
+      }
+    }
+    return result;
+  }
+  return [];
+}
 
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -48,7 +74,6 @@ export default function MaladieGroupePage() {
   const [showGaranties, setShowGaranties] = useState(false);
   const [showReajust, setShowReajust]     = useState(false);
   const [expandedGroupe, setExpandedGroupe] = useState<number | null>(null);
-  const [expandedEmp, setExpandedEmp]       = useState<string | null>(null);
 
   useEffect(() => {
     DataService.getGroupes()
@@ -67,13 +92,9 @@ export default function MaladieGroupePage() {
   );
 
   // Stats globales
-  const totalAssures = groupes.reduce((s, g) => {
-    const emps: Employe[] = g.employesDetail || [];
-    return s + emps.reduce((a, e) => a + 1 + e.famille.length, 0);
-  }, 0);
-  const totalPrime = groupes.reduce((s, g) => {
-    const emps: Employe[] = g.employesDetail || [];
-    const d = calcDecompteGroupe(emps);
+  const totalAssures = groupes.reduce((s, g) => s + toMembres(g).length, 0);
+  const totalPrime   = groupes.reduce((s, g) => {
+    const d = calcDecomptePopulation(toMembres(g));
     return s + d.total * Number(g.dureeGarantie || 1);
   }, 0);
 
@@ -238,8 +259,8 @@ export default function MaladieGroupePage() {
         {/* ── Liste des groupes ── */}
         <div className="grid gap-6">
           {filtered.map((groupe, gi) => {
-            const employes: Employe[] = groupe.employesDetail || [];
-            const decompte = calcDecompteGroupe(employes);
+            const membres  = toMembres(groupe);
+            const decompte = calcDecomptePopulation(membres);
             const duree    = Number(groupe.dureeGarantie || 1);
             const echeance = echeanceGroupe(groupe);
             const soon     = isExpiringSoon(groupe);
@@ -281,17 +302,22 @@ export default function MaladieGroupePage() {
                         {/* Résumé population */}
                         <div className="flex flex-wrap gap-3 mb-3">
                           <div className="flex items-center gap-1.5 text-xs bg-gray-50 border px-2 py-1 rounded">
-                            <Briefcase className="w-3 h-3" />
-                            {employes.length} employé{employes.length > 1 ? "s" : ""}
-                          </div>
-                          <div className="flex items-center gap-1.5 text-xs bg-blue-50 border border-blue-200 text-blue-700 px-2 py-1 rounded">
                             <Users className="w-3 h-3" />
-                            {decompte.nbAdulte} adulte{decompte.nbAdulte > 1 ? "s" : ""} · {PRIME_ADULTE.toLocaleString()} FCFA
+                            {membres.length} assuré{membres.length > 1 ? "s" : ""}
                           </div>
-                          {decompte.nbAdulteAge > 0 && (
+                          {decompte.nb.enfant > 0 && (
+                            <div className="flex items-center gap-1.5 text-xs bg-green-50 border border-green-200 text-green-700 px-2 py-1 rounded">
+                              {decompte.nb.enfant} enfant{decompte.nb.enfant > 1 ? "s" : ""}
+                            </div>
+                          )}
+                          {decompte.nb.adulte > 0 && (
+                            <div className="flex items-center gap-1.5 text-xs bg-blue-50 border border-blue-200 text-blue-700 px-2 py-1 rounded">
+                              {decompte.nb.adulte} adulte{decompte.nb.adulte > 1 ? "s" : ""}
+                            </div>
+                          )}
+                          {decompte.nb.adulte_age > 0 && (
                             <div className="flex items-center gap-1.5 text-xs bg-purple-50 border border-purple-200 text-purple-700 px-2 py-1 rounded">
-                              <Users className="w-3 h-3" />
-                              {decompte.nbAdulteAge} adulte{decompte.nbAdulteAge > 1 ? "s" : ""} âgé{decompte.nbAdulteAge > 1 ? "s" : ""} · {PRIME_ADULTE_AGE.toLocaleString()} FCFA
+                              {decompte.nb.adulte_age} âgé{decompte.nb.adulte_age > 1 ? "s" : ""}
                             </div>
                           )}
                         </div>
@@ -342,21 +368,16 @@ export default function MaladieGroupePage() {
                             {/* Décompte */}
                             <div className="rounded-lg border overflow-hidden text-sm">
                               {[
-                                {
-                                  label: `Prime nette adulte${decompte.nbAdulte > 1 ? "s" : ""} (${PRIME_ADULTE.toLocaleString()} × ${decompte.nbAdulte})`,
-                                  val: decompte.primeAdultes * duree, show: decompte.nbAdulte > 0,
-                                },
-                                {
-                                  label: `Prime nette adulte${decompte.nbAdulteAge > 1 ? "s" : ""} âgé${decompte.nbAdulteAge > 1 ? "s" : ""} (${PRIME_ADULTE_AGE.toLocaleString()} × ${decompte.nbAdulteAge})`,
-                                  val: decompte.primeAdultesAge * duree, show: decompte.nbAdulteAge > 0,
-                                },
+                                { label: `Enfants (${decompte.nb.enfant})`,       val: decompte.primeEnfants * duree,    show: decompte.nb.enfant > 0 },
+                                { label: `Adultes (${decompte.nb.adulte})`,        val: decompte.primeAdultes * duree,    show: decompte.nb.adulte > 0 },
+                                { label: `Personnes âgées (${decompte.nb.adulte_age})`, val: decompte.primeAdultesAge * duree, show: decompte.nb.adulte_age > 0 },
                                 { label: "Prime nette totale",               val: decompte.primeNette * duree,  show: true, bold: true },
                                 { label: "Accessoires",                      val: decompte.accessoires,         show: true },
                                 { label: `Taxes (${(TAUX_TAXE * 100).toFixed(1)} %)`, val: decompte.taxes * duree, show: true },
                               ].filter(r => r.show).map((row, idx) => (
-                                <div key={idx} className={`flex justify-between px-4 py-2.5 border-t ${row.bold ? "bg-blue-50 font-semibold" : ""}`}>
+                                <div key={idx} className={`flex justify-between px-4 py-2.5 border-t ${(row as any).bold ? "bg-blue-50 font-semibold" : ""}`}>
                                   <span>{row.label}</span>
-                                  <span className={`font-mono ${row.bold ? "text-blue-700" : ""}`}>
+                                  <span className={`font-mono ${(row as any).bold ? "text-blue-700" : ""}`}>
                                     {row.val.toLocaleString("fr-FR")} FCFA
                                   </span>
                                 </div>
@@ -367,92 +388,39 @@ export default function MaladieGroupePage() {
                               </div>
                             </div>
 
-                            {/* Liste employés avec photos */}
+                            {/* Liste des membres */}
                             <div>
                               <p className="text-sm font-semibold mb-3 flex items-center gap-2">
-                                <Briefcase className="w-4 h-4 text-blue-600" />
-                                Liste des employés assurés
+                                <Users className="w-4 h-4 text-blue-600" />
+                                Liste des assurés ({membres.length})
                               </p>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                {employes.map((emp) => {
-                                  const empOpen = expandedEmp === emp.id;
-                                  const totalMembres = 1 + emp.famille.length;
-                                  const primeEmp = (
-                                    (emp.type === "adulte" ? PRIME_ADULTE : PRIME_ADULTE_AGE) +
-                                    emp.famille.reduce((s, m) => s + (m.type === "adulte" ? PRIME_ADULTE : PRIME_ADULTE_AGE), 0)
-                                  ) * duree;
-
-                                  return (
-                                    <Card key={emp.id} className="p-3 border border-blue-100">
-                                      <div className="flex items-start gap-3">
-                                        {/* Photo employé */}
-                                        <PhotoAvatar
-                                          photo={emp.photo}
-                                          nom={emp.nom || "?"}
-                                          size="md"
-                                          rounded="full"
-                                        />
-                                        <div className="flex-1 min-w-0">
-                                          <div className="flex items-start justify-between gap-1">
-                                            <div>
-                                              <p className="font-semibold text-sm leading-tight">{emp.nom || "—"}</p>
-                                              <p className="text-xs text-muted-foreground">{emp.poste}</p>
-                                              {emp.matricule && (
-                                                <p className="text-xs text-blue-600 font-mono">{emp.matricule}</p>
-                                              )}
-                                            </div>
-                                            <span className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${
-                                              emp.type === "adulte_age"
-                                                ? "bg-purple-100 text-purple-700"
-                                                : "bg-blue-100 text-blue-700"
-                                            }`}>
-                                              {emp.type === "adulte_age" ? "Âgé" : "Adulte"}
+                              <div className="rounded-lg border overflow-hidden">
+                                <div className="overflow-x-auto max-h-64 overflow-y-auto">
+                                  <table className="w-full text-xs">
+                                    <thead className="sticky top-0 bg-gray-50 border-b">
+                                      <tr>
+                                        <th className="text-left px-3 py-2 text-muted-foreground font-medium">N°</th>
+                                        <th className="text-left px-3 py-2 text-muted-foreground font-medium">Nom et Prénom</th>
+                                        <th className="text-left px-3 py-2 text-muted-foreground font-medium">Lien</th>
+                                        <th className="text-left px-3 py-2 text-muted-foreground font-medium">Catégorie</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {membres.map((m, mi) => (
+                                        <tr key={mi} className={`border-t ${mi % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}>
+                                          <td className="px-3 py-2 text-muted-foreground">{m.numero}</td>
+                                          <td className="px-3 py-2 font-medium">{m.nom}</td>
+                                          <td className="px-3 py-2 text-muted-foreground">{m.lien || "—"}</td>
+                                          <td className="px-3 py-2">
+                                            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold border ${TYPE_COLORS[m.type]}`}>
+                                              {m.type === "enfant" ? "Enfant" : m.type === "adulte" ? "Adulte" : "Âgé"}
                                             </span>
-                                          </div>
-
-                                          <div className="flex items-center justify-between mt-2">
-                                            <p className="text-xs text-muted-foreground">
-                                              {totalMembres} assuré{totalMembres > 1 ? "s" : ""} · {primeEmp.toLocaleString("fr-FR")} FCFA
-                                            </p>
-                                            {emp.famille.length > 0 && (
-                                              <button
-                                                type="button"
-                                                onClick={() => setExpandedEmp(empOpen ? null : emp.id)}
-                                                className="text-xs text-blue-600 flex items-center gap-0.5 hover:underline"
-                                              >
-                                                {empOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                                                Famille ({emp.famille.length})
-                                              </button>
-                                            )}
-                                          </div>
-
-                                          {/* Famille dépliée */}
-                                          {empOpen && emp.famille.length > 0 && (
-                                            <motion.div
-                                              initial={{ opacity: 0 }}
-                                              animate={{ opacity: 1 }}
-                                              className="mt-2 space-y-1 border-t pt-2"
-                                            >
-                                              {emp.famille.map((m, mi) => (
-                                                <div key={mi} className="flex items-center gap-2 text-xs">
-                                                  <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xs shrink-0">
-                                                    {m.nom?.[0] || "?"}
-                                                  </div>
-                                                  <span className="flex-1 truncate">{m.nom} <span className="text-muted-foreground">({m.lien})</span></span>
-                                                  <span className={`px-1 rounded text-xs shrink-0 ${
-                                                    m.type === "adulte_age" ? "bg-purple-100 text-purple-600" : "bg-blue-50 text-blue-600"
-                                                  }`}>
-                                                    {m.type === "adulte_age" ? "Âgé" : "Adulte"}
-                                                  </span>
-                                                </div>
-                                              ))}
-                                            </motion.div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </Card>
-                                  );
-                                })}
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
                               </div>
                             </div>
                           </motion.div>
