@@ -8,4 +8,6 @@ import java.util.Optional;
 @Repository
 public interface AssureRepository extends JpaRepository<Assure, Long> {
     Optional<Assure> findByNumero(String numero);
+    java.util.List<Assure> findByNumeroStartingWith(String prefix);
+    void deleteByNumeroStartingWith(String prefix);
 }
