@@ -100,16 +100,25 @@ function parseExcel(file: File): Promise<MembrePopulation[]> {
           reject(new Error("Le fichier ne contient pas de données")); return;
         }
 
+        // Détecter si la première ligne est bien un en-tête (non numérique)
+        const startRow = (typeof rows[0]?.[0] === "number" || rows[0]?.[0] == null) ? 0 : 1;
+
         const membres: MembrePopulation[] = [];
-        for (let i = 1; i < rows.length; i++) {
+        for (let i = startRow; i < rows.length; i++) {
           const row = rows[i];
-          if (!row || !row[1]) continue;  // ignorer lignes vides
+          if (!row || row.length === 0) continue;  // ignorer lignes vides
+          const nom = String(row[1] ?? "").trim();
+          if (!nom) continue;
 
           // Normaliser la date de naissance
           let dateNaissance = "";
           const rawDate = row[2];
           if (rawDate instanceof Date) {
-            dateNaissance = rawDate.toISOString().split("T")[0];
+            // Utiliser les méthodes locales pour éviter le décalage UTC
+            const y = rawDate.getFullYear();
+            const m = String(rawDate.getMonth() + 1).padStart(2, "0");
+            const d = String(rawDate.getDate()).padStart(2, "0");
+            dateNaissance = `${y}-${m}-${d}`;
           } else if (typeof rawDate === "string" && rawDate.trim()) {
             const s = rawDate.trim().replace(/\//g, "-");
             const parts = s.split("-");
@@ -120,14 +129,17 @@ function parseExcel(file: File): Promise<MembrePopulation[]> {
               dateNaissance = s;
             }
           } else if (typeof rawDate === "number") {
-            // Numéro série Excel
-            const d = XLSX.SSF.parse_date_code(rawDate);
-            dateNaissance = `${d.y}-${String(d.m).padStart(2, "0")}-${String(d.d).padStart(2, "0")}`;
+            // Numéro série Excel → date JS (25569 = écart jours entre 1900-01-01 et 1970-01-01)
+            const jsDate = new Date(Math.round((rawDate - 25569) * 86400 * 1000));
+            const y = jsDate.getUTCFullYear();
+            const m = String(jsDate.getUTCMonth() + 1).padStart(2, "0");
+            const d = String(jsDate.getUTCDate()).padStart(2, "0");
+            dateNaissance = `${y}-${m}-${d}`;
           }
 
           membres.push({
             numero:        Number(row[0]) || i,
-            nom:           String(row[1] || "").trim(),
+            nom,
             dateNaissance,
             sexe:          String(row[3] || "").trim(),
             pieceIdentite: String(row[4] || "").trim(),
