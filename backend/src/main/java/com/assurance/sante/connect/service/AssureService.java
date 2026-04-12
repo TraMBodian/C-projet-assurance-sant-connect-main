@@ -3,9 +3,11 @@ package com.assurance.sante.connect.service;
 import com.assurance.sante.connect.dto.AssureDto;
 import com.assurance.sante.connect.entity.Assure;
 import com.assurance.sante.connect.repository.AssureRepository;
+import com.assurance.sante.connect.repository.PoliceRepository;
 import com.assurance.sante.connect.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -14,6 +16,7 @@ import java.util.stream.Collectors;
 public class AssureService {
 
     private final AssureRepository assureRepository;
+    private final PoliceRepository policeRepository;
 
     public List<AssureDto> getAllAssures() {
         return assureRepository.findAll().stream()
@@ -105,9 +108,12 @@ public class AssureService {
         catch (IllegalArgumentException e) { return Assure.AssureType.FAMILLE; }
     }
 
+    @Transactional
     public void deleteAssure(Long id) {
         Assure assure = assureRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Assure not found with id: " + id));
+        // Supprimer les polices liées avant de supprimer l'assuré (contrainte FK)
+        policeRepository.deleteByAssure(assure);
         assureRepository.delete(assure);
     }
 }
