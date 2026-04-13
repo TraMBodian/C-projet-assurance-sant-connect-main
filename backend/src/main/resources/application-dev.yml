@@ -35,7 +35,7 @@ server:
     context-path: /api
 
 app:
-  jwtSecret: mySecretKeyForJWTTokenGenerationAndValidation123456789
+  jwtSecret: We7/Ty05ZUgeNXizXvsYVB2wNn1jiYR723q2Ho0EubelOwQhNSKtMizs/+29jNl1NGazGPrP2/WngrgDq1OuRw==
   jwtExpirationMs: 86400000
 
 logging:
