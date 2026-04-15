@@ -256,8 +256,6 @@ function parseAndValidate(file: File): Promise<ParseResult> {
         const cniSeen:  Set<string>        = new Set();
 
         // Détecter si les colonnes clés existent dans le fichier
-        const hasColCni  = k.pieceIdentite !== null;
-        const hasColLien = k.lien          !== null;
         const hasColDate = k.dateNaissance !== null;
         const hasColSexe = k.sexe          !== null;
 
@@ -357,54 +355,76 @@ const DUREES = ["1", "2", "3"].map(v => ({ value: v, label: `${v} an${+v > 1 ? "
 // ─── Sous-composant : ligne tableau membres ───────────────────────────────────
 
 function MembreRow({
-  m, idx, isPrincipal, isAyantDroit, onRemove,
+  m, isPrincipal, isAyantDroit, onRemove,
 }: {
   m: MembrePopulation;
-  idx: number;
   isPrincipal?: boolean;
   isAyantDroit?: boolean;
   onRemove?: () => void;
 }) {
   return (
-    <tr className={`border-t ${idx % 2 === 0 ? "bg-white" : "bg-gray-50/50"} ${isPrincipal ? "bg-blue-50/60" : ""}`}>
-      <td className="px-3 py-2">
-        {isPrincipal ? (
-          <span className="flex items-center gap-1 text-blue-700">
-            <UserCheck className="w-3 h-3" />
-            <span className="font-mono text-muted-foreground">{m.numero}</span>
-          </span>
-        ) : isAyantDroit ? (
-          <span className="flex items-center gap-1 pl-4 text-gray-400">
-            <UserPlus className="w-3 h-3" />
-            <span className="font-mono">{m.numero}</span>
-          </span>
-        ) : (
-          <span className="font-mono text-muted-foreground">{m.numero}</span>
-        )}
+    <tr className={`border-t transition-colors ${isPrincipal ? "bg-blue-50/40 hover:bg-blue-50/60" : "bg-white hover:bg-gray-50/60"}`}>
+      {/* N° + icône */}
+      <td className="px-4 py-2.5 w-14">
+        <span className={`flex items-center gap-1.5 ${isPrincipal ? "text-blue-600" : "text-gray-400"}`}>
+          {isPrincipal
+            ? <UserCheck className="w-3.5 h-3.5 shrink-0" />
+            : <UserPlus  className="w-3.5 h-3.5 shrink-0" />
+          }
+          <span className="text-xs font-mono">{m.numero}</span>
+        </span>
       </td>
-      <td className={`px-3 py-2 font-medium ${isPrincipal ? "text-blue-800" : isAyantDroit ? "pl-6 text-gray-700" : ""}`}>
+
+      {/* Nom */}
+      <td className={`px-3 py-2.5 text-sm font-medium min-w-[160px] ${isPrincipal ? "text-blue-700" : "text-gray-800"}`}>
         {m.nom}
       </td>
-      <td className="px-3 py-2 text-muted-foreground">{m.dateNaissance || "—"}</td>
-      <td className="px-3 py-2 text-muted-foreground">{m.sexe}</td>
-      <td className="px-3 py-2 text-muted-foreground font-mono">{m.pieceIdentite}</td>
-      <td className="px-3 py-2">
-        <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-          m.lien === "Principal"
-            ? "bg-blue-100 text-blue-800 border border-blue-200"
-            : "bg-gray-100 text-gray-700 border border-gray-200"
-        }`}>{m.lien}</span>
+
+      {/* Date naissance */}
+      <td className="px-3 py-2.5 text-sm text-gray-500 w-28 font-mono">
+        {m.dateNaissance || "—"}
       </td>
-      <td className="px-3 py-2">
-        <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold border ${TYPE_COLORS[m.type]}`}>
+
+      {/* Sexe */}
+      <td className="px-3 py-2.5 text-sm text-gray-600 w-14 text-center">
+        {m.sexe || "—"}
+      </td>
+
+      {/* Pièce d'identité */}
+      <td className="px-3 py-2.5 text-sm text-gray-500 font-mono min-w-[120px]">
+        {m.pieceIdentite || "—"}
+      </td>
+
+      {/* Lien */}
+      <td className="px-3 py-2.5 w-28">
+        <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold border ${
+          m.lien === "Principal"
+            ? "bg-blue-100 text-blue-700 border-blue-200"
+            : "bg-white text-gray-700 border-gray-300"
+        }`}>
+          {m.lien || "—"}
+        </span>
+      </td>
+
+      {/* Catégorie */}
+      <td className="px-3 py-2.5 w-24">
+        <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold border ${
+          m.type === "enfant"
+            ? "bg-green-100 text-green-700 border-green-200"
+            : m.type === "adulte_age"
+            ? "bg-purple-100 text-purple-700 border-purple-200"
+            : "bg-blue-50 text-blue-600 border-blue-200"
+        }`}>
           {m.type === "enfant" ? "Enfant" : m.type === "adulte" ? "Adulte" : "Âgé"}
         </span>
       </td>
+
+      {/* Supprimer */}
       {onRemove && (
-        <td className="px-2 py-2">
+        <td className="px-3 py-2.5 w-8">
           <button type="button" onClick={onRemove}
-            className="p-0.5 text-red-400 hover:text-red-600 rounded">
-            <X className="w-3 h-3" />
+            className="text-red-400 hover:text-red-600 transition-colors">
+            <X className="w-3.5 h-3.5" />
           </button>
         </td>
       )}
@@ -789,47 +809,55 @@ export default function NewGroupePage() {
               {/* Tableau membres (vue groupée) */}
               {membres.length > 0 && (
                 <div className="rounded-xl border overflow-hidden">
-                  <div className="bg-gray-50 px-4 py-2.5 flex justify-between items-center border-b">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                      Membres ({membres.length}) · {familleGroups.length} famille{familleGroups.length > 1 ? "s" : ""}
+                  {/* En-tête */}
+                  <div className="px-4 py-3 flex justify-between items-center border-b bg-white">
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                      Membres confirmés ({membres.length}) · {familleGroups.length} famille{familleGroups.length > 1 ? "s" : ""}
                     </p>
-                    <Button type="button" variant="ghost" size="sm"
-                      className="h-7 text-xs text-red-500 hover:text-red-700 hover:bg-red-50"
-                      onClick={() => { setMembres([]); setFileName(""); setValidationErrors([]); }}>
-                      <X className="w-3 h-3 mr-1" /> Effacer tout
-                    </Button>
+                    <button
+                      type="button"
+                      onClick={() => { setMembres([]); setFileName(""); setValidationErrors([]); }}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-red-500 hover:text-red-700 transition-colors"
+                    >
+                      <X className="w-3.5 h-3.5" /> Effacer tout
+                    </button>
                   </div>
-                  <div className="overflow-x-auto max-h-72 overflow-y-auto">
+
+                  <div className="overflow-x-auto max-h-80 overflow-y-auto">
                     <table className="w-full text-xs">
-                      <thead className="sticky top-0 bg-white border-b z-10">
+                      <thead className="sticky top-0 bg-gray-50 border-b z-10">
                         <tr>
-                          <th className="text-left px-3 py-2 text-muted-foreground font-medium w-12">N°</th>
-                          <th className="text-left px-3 py-2 text-muted-foreground font-medium min-w-[160px]">Nom et Prénom</th>
-                          <th className="text-left px-3 py-2 text-muted-foreground font-medium w-28">Date naiss.</th>
-                          <th className="text-left px-3 py-2 text-muted-foreground font-medium w-10">Sexe</th>
-                          <th className="text-left px-3 py-2 text-muted-foreground font-medium min-w-[110px]">Pièce d'identité</th>
-                          <th className="text-left px-3 py-2 text-muted-foreground font-medium w-24">Lien</th>
-                          <th className="text-left px-3 py-2 text-muted-foreground font-medium w-20">Catégorie</th>
-                          <th className="w-8 px-2" />
+                          <th className="text-left px-4 py-2.5 text-gray-500 font-medium w-14">N°</th>
+                          <th className="text-left px-3 py-2.5 text-gray-500 font-medium min-w-[160px]">Nom et Prénom</th>
+                          <th className="text-left px-3 py-2.5 text-gray-500 font-medium w-28">Date naiss.</th>
+                          <th className="text-center px-3 py-2.5 text-gray-500 font-medium w-14">Sexe</th>
+                          <th className="text-left px-3 py-2.5 text-gray-500 font-medium min-w-[120px]">Pièce d'identité</th>
+                          <th className="text-left px-3 py-2.5 text-gray-500 font-medium w-28">Lien</th>
+                          <th className="text-left px-3 py-2.5 text-gray-500 font-medium w-24">Catégorie</th>
+                          <th className="w-8" />
                         </tr>
                       </thead>
                       <tbody>
                         {familleGroups.map((fg, fi) => (
                           <>
                             {fi > 0 && (
-                              <tr key={`sep-${fi}`}><td colSpan={8} className="border-t-2 border-blue-100 py-0" /></tr>
+                              <tr key={`sep-${fi}`}>
+                                <td colSpan={8} className="border-t-2 border-blue-100 py-0 bg-blue-50/20" />
+                              </tr>
                             )}
                             {fg.principal && (
                               <MembreRow
                                 key={`p-${fg.principal.numero}`}
-                                m={fg.principal} idx={fi * 2} isPrincipal
+                                m={fg.principal}
+                                isPrincipal
                                 onRemove={() => removeMembre(membres.indexOf(fg.principal!))}
                               />
                             )}
-                            {fg.ayantsDroit.map((ad, ai) => (
+                            {fg.ayantsDroit.map((ad) => (
                               <MembreRow
                                 key={`ad-${ad.numero}`}
-                                m={ad} idx={ai} isAyantDroit
+                                m={ad}
+                                isAyantDroit
                                 onRemove={() => removeMembre(membres.indexOf(ad))}
                               />
                             ))}
