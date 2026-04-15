@@ -5,8 +5,12 @@ import AppLayout from "@/components/AppLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataService } from "@/services/dataService";
+import { useAuth } from "@/context/AuthContext";
 
 export default function CartesPage() {
+  const { user } = useAuth();
+  const isClient = user?.role === "client";
+
   const [search, setSearch] = useState("");
   const [assures, setAssures] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -14,10 +18,18 @@ export default function CartesPage() {
 
   useEffect(() => {
     DataService.getAssures()
-      .then(list => setAssures(list ?? []))
+      .then(list => {
+        const all = list ?? [];
+        // A01 — Broken Access Control : un client ne voit que sa propre carte
+        if (isClient) {
+          setAssures(all.filter((a: any) => a.email === user?.email));
+        } else {
+          setAssures(all);
+        }
+      })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, []);
+  }, [isClient, user?.email]);
 
   const filtered = assures.filter(
     (a) =>
@@ -108,8 +120,10 @@ export default function CartesPage() {
     qrImg.src = generateQRCode(assure.numero);
   };
 
+  const pageTitle = isClient ? "Ma Carte d'assurance" : "Cartes d'assurance";
+
   if (loading) return (
-    <AppLayout title="Cartes d'assurance">
+    <AppLayout title={pageTitle}>
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
         <span className="ml-3 text-sm text-muted-foreground">Chargement des cartes...</span>
@@ -118,7 +132,7 @@ export default function CartesPage() {
   );
 
   if (error) return (
-    <AppLayout title="Cartes d'assurance">
+    <AppLayout title={pageTitle}>
       <div className="flex flex-col items-center justify-center h-64 gap-3 text-center px-4">
         <ServerCrash className="w-10 h-10 text-muted-foreground opacity-40" />
         <p className="font-semibold">Impossible de joindre le serveur</p>
@@ -128,28 +142,39 @@ export default function CartesPage() {
   );
 
   return (
-    <AppLayout title="Cartes d'assurance">
+    <AppLayout title={pageTitle}>
       <div className="space-y-4">
 
-        {/* ── Barre de recherche ─────────────────────────────────────── */}
-        <div className="flex items-center gap-2 w-full max-w-sm">
-          <div className="flex items-center gap-2 flex-1 px-3 py-2 rounded-lg border border-input bg-card text-sm">
-            <Search size={15} className="text-muted-foreground shrink-0" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Rechercher un assuré..."
-              className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground min-w-0"
-            />
+        {/* ── Barre de recherche (admin/prestataire uniquement) ──────── */}
+        {!isClient && (
+          <div className="flex items-center gap-2 w-full max-w-sm">
+            <div className="flex items-center gap-2 flex-1 px-3 py-2 rounded-lg border border-input bg-card text-sm">
+              <Search size={15} className="text-muted-foreground shrink-0" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Rechercher un assuré..."
+                className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground min-w-0"
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         {filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center h-48 gap-3 text-center">
             <CreditCard size={40} className="text-muted-foreground opacity-30" />
             <p className="font-semibold">
-              {search ? "Aucun assuré trouvé" : "Aucun assuré enregistré"}
+              {search
+                ? "Aucun assuré trouvé"
+                : isClient
+                  ? "Aucune carte trouvée pour votre compte"
+                  : "Aucun assuré enregistré"}
             </p>
+            {!search && isClient && (
+              <p className="text-sm text-muted-foreground max-w-xs">
+                Votre adresse e-mail doit correspondre à celle de votre dossier assuré. Contactez l'administrateur si vous pensez qu'il y a une erreur.
+              </p>
+            )}
           </div>
         )}
 
