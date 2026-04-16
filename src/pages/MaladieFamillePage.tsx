@@ -14,8 +14,9 @@ import { PhotoAvatar } from "@/components/PhotoUpload";
 import { motion } from "framer-motion";
 import {
   GARANTIES_CNART, REAJUSTEMENT_SP, calcDecompte,
-  PRIME_ADULTE, PRIME_ADULTE_AGE, type TypeAssure, type Beneficiaire,
+  type TypeAssure, type Beneficiaire,
 } from "./NewFamillePage";
+import { getTarifs } from "@/services/tarifService";
 
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -308,14 +309,22 @@ export default function MaladieFamillePage() {
 
                         {/* Population */}
                         <div className="flex flex-wrap gap-3 mb-3">
-                          <div className="flex items-center gap-1.5 text-xs bg-blue-50 border border-blue-200 text-blue-700 px-2 py-1 rounded">
-                            <Users className="w-3 h-3" />
-                            {decompte.nbAdulte} adulte{decompte.nbAdulte > 1 ? "s" : ""} · {PRIME_ADULTE.toLocaleString()} FCFA
-                          </div>
-                          {decompte.nbAdulteAge > 0 && (
+                          {decompte.nb.enfant > 0 && (
+                            <div className="flex items-center gap-1.5 text-xs bg-green-50 border border-green-200 text-green-700 px-2 py-1 rounded">
+                              <Users className="w-3 h-3" />
+                              {decompte.nb.enfant} enfant{decompte.nb.enfant > 1 ? "s" : ""}
+                            </div>
+                          )}
+                          {decompte.nb.adulte > 0 && (
+                            <div className="flex items-center gap-1.5 text-xs bg-blue-50 border border-blue-200 text-blue-700 px-2 py-1 rounded">
+                              <Users className="w-3 h-3" />
+                              {decompte.nb.adulte} adulte{decompte.nb.adulte > 1 ? "s" : ""}
+                            </div>
+                          )}
+                          {decompte.nb.adulte_age > 0 && (
                             <div className="flex items-center gap-1.5 text-xs bg-purple-50 border border-purple-200 text-purple-700 px-2 py-1 rounded">
                               <Users className="w-3 h-3" />
-                              {decompte.nbAdulteAge} adulte{decompte.nbAdulteAge > 1 ? "s" : ""} âgé{decompte.nbAdulteAge > 1 ? "s" : ""} · {PRIME_ADULTE_AGE.toLocaleString()} FCFA
+                              {decompte.nb.adulte_age} âgé{decompte.nb.adulte_age > 1 ? "s" : ""}
                             </div>
                           )}
                         </div>
@@ -376,19 +385,12 @@ export default function MaladieFamillePage() {
                             className="rounded-lg border overflow-hidden mb-4 text-sm"
                           >
                             {[
-                              {
-                                label: `Prime nette adulte${decompte.nbAdulte > 1 ? "s" : ""} (${PRIME_ADULTE.toLocaleString()} × ${decompte.nbAdulte})`,
-                                val: decompte.primeAdultes * duree,
-                                show: decompte.nbAdulte > 0,
-                              },
-                              {
-                                label: `Prime nette adulte${decompte.nbAdulteAge > 1 ? "s" : ""} âgé${decompte.nbAdulteAge > 1 ? "s" : ""} (${PRIME_ADULTE_AGE.toLocaleString()} × ${decompte.nbAdulteAge})`,
-                                val: decompte.primeAdultesAge * duree,
-                                show: decompte.nbAdulteAge > 0,
-                              },
-                              { label: "Prime nette totale", val: decompte.primeNette * duree, show: true, bold: true },
-                              { label: "Accessoires",        val: decompte.accessoires,        show: true },
-                              { label: `Taxes (${(10.6).toFixed(1)} %)`, val: decompte.taxes * duree, show: true },
+                              { label: `Enfants (${decompte.nb.enfant})`,     val: decompte.primeEnfants    * duree, show: decompte.nb.enfant > 0 },
+                              { label: `Adultes (${decompte.nb.adulte})`,     val: decompte.primeAdultes    * duree, show: decompte.nb.adulte > 0 },
+                              { label: `Personnes âgées (${decompte.nb.adulte_age})`, val: decompte.primeAdultesAge * duree, show: decompte.nb.adulte_age > 0 },
+                              { label: "Prime nette (= Population)",          val: decompte.primeNette      * duree, show: true, bold: true },
+                              { label: `CP — Chargements Professionnels (${decompte.tauxCP} %)`, val: decompte.cp * duree, show: true },
+                              { label: `Taxes (${decompte.tauxTaxe.toFixed(1)} %)`, val: decompte.taxes    * duree, show: true },
                             ].filter(r => r.show).map((row, idx) => (
                               <div key={idx} className={`flex justify-between px-4 py-2.5 border-t ${row.bold ? "bg-blue-50 font-semibold" : ""}`}>
                                 <span>{row.label}</span>

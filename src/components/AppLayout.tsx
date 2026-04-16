@@ -12,6 +12,7 @@ import { AIChatbot } from "@/components/AIChatbot";
 interface AppLayoutProps {
   children: ReactNode;
   title?: string;
+  subHeader?: ReactNode;
 }
 
 interface SearchItem {
@@ -26,7 +27,7 @@ interface SearchItem {
 let _cachedAssures:      any[] | null = null;
 let _cachedPrestataires: any[] | null = null;
 
-export default function AppLayout({ children, title }: AppLayoutProps) {
+export default function AppLayout({ children, title, subHeader }: AppLayoutProps) {
   const navigate = useNavigate();
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -165,8 +166,15 @@ export default function AppLayout({ children, title }: AppLayoutProps) {
 
         {/* ── Main content ───────────────────────────────────────────────── */}
         <main className="flex-1 overflow-y-auto">
-          <div className="p-3 sm:p-5 lg:p-7 xl:p-8 max-w-[1600px] mx-auto w-full">
-            {children}
+          <div className="max-w-[1600px] mx-auto w-full">
+            {subHeader && (
+              <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b px-3 sm:px-5 lg:px-7 xl:px-8 py-2.5">
+                {subHeader}
+              </div>
+            )}
+            <div className="p-3 sm:p-5 lg:p-7 xl:p-8">
+              {children}
+            </div>
           </div>
         </main>
       </div>

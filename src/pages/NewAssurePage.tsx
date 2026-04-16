@@ -75,13 +75,14 @@ export default function NewAssurePage() {
   );
 
   return (
-    <AppLayout title="Nouvel assuré">
+    <AppLayout title="Nouvel assuré" subHeader={
+      <Button size="sm" onClick={() => navigate('/assures')}>
+        <ArrowLeft className="w-4 h-4 mr-2" /> Retour
+      </Button>
+    }>
       <div className="w-full px-2 sm:px-0">
         <div className="flex justify-center">
           <div className="w-full max-w-3xl space-y-4 sm:space-y-6">
-            <Button variant="ghost" onClick={() => navigate('/assures')} className="mb-2 text-xs sm:text-sm px-2 sm:px-4">
-              <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-2" /> Retour
-            </Button>
 
             <Card className="p-4 sm:p-6">
               <form onSubmit={handleSubmit} className="space-y-5">

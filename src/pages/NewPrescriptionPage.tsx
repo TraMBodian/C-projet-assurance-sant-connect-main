@@ -40,12 +40,13 @@ export default function NewPrescriptionPage() {
   };
 
   return (
-    <AppLayout title="Nouvelle ordonnance">
+    <AppLayout title="Nouvelle ordonnance" subHeader={
+      <Button size="sm" onClick={() => navigate('/prescriptions')}>
+        <ArrowLeft className="w-4 h-4 mr-2" /> Retour
+      </Button>
+    }>
       <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
         <div className="w-full max-w-3xl space-y-6">
-          <Button variant="ghost" onClick={() => navigate('/prescriptions')} className="mb-4">
-            <ArrowLeft className="w-4 h-4 mr-2" /> Retour
-          </Button>
 
           <Card className="p-6">
             <form onSubmit={handleSubmit} className="space-y-6">

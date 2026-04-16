@@ -42,11 +42,12 @@ export default function SinistreDetailsPage() {
   }
 
   return (
-    <AppLayout title={`Sinistre ${sinistre.numero}`}>
+    <AppLayout title={`Sinistre ${sinistre.numero}`} subHeader={
+      <Button size="sm" onClick={() => navigate('/sinistres')}>
+        <ArrowLeft className="w-4 h-4 mr-2" /> Retour
+      </Button>
+    }>
       <div className="max-w-4xl space-y-6">
-        <Button variant="ghost" onClick={() => navigate('/sinistres')} className="mb-4">
-          <ArrowLeft className="w-4 h-4 mr-2" /> Retour
-        </Button>
 
         <Card className="p-6">
           <div className="flex items-start justify-between mb-6">

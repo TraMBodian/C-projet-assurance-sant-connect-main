@@ -88,12 +88,13 @@ export default function AssureDetailsPage() {
   );
 
   if (error || !assure) return (
-    <AppLayout title="Assuré introuvable">
+    <AppLayout title="Assuré introuvable" subHeader={
+      <Button size="sm" onClick={() => navigate("/assures")}>
+        <ArrowLeft className="w-4 h-4 mr-2" /> Retour à la liste
+      </Button>
+    }>
       <div className="flex flex-col items-center justify-center h-64 gap-3">
         <p className="text-muted-foreground">{error ?? "Assuré non trouvé"}</p>
-        <Button variant="ghost" onClick={() => navigate("/assures")}>
-          <ArrowLeft className="w-4 h-4 mr-2" /> Retour à la liste
-        </Button>
       </div>
     </AppLayout>
   );
@@ -122,14 +123,15 @@ export default function AssureDetailsPage() {
   );
 
   return (
-    <AppLayout title={`${assure.prenom} ${assure.nom}`}>
+    <AppLayout title={`${assure.prenom} ${assure.nom}`} subHeader={
+      <Button size="sm" onClick={() => navigate("/assures")}>
+        <ArrowLeft className="w-4 h-4 mr-2" /> Retour
+      </Button>
+    }>
       <div className="max-w-4xl space-y-5">
 
         {/* ── En-tête ── */}
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <Button variant="ghost" onClick={() => navigate("/assures")} className="text-sm px-3">
-            <ArrowLeft className="w-4 h-4 mr-2" /> Retour
-          </Button>
+        <div className="flex items-center justify-end flex-wrap gap-2">
           <div className="flex gap-2">
             {isEditing ? (
               <>

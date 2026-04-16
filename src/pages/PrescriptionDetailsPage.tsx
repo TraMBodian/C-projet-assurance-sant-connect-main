@@ -184,27 +184,29 @@ export default function PrescriptionDetailsPage() {
 
   if (error || !prescription) {
     return (
-      <AppLayout title="Ordonnance introuvable">
+      <AppLayout title="Ordonnance introuvable" subHeader={
+        <Button size="sm" onClick={() => navigate("/prescriptions")}>
+          <ArrowLeft className="w-4 h-4 mr-2" /> Retour aux prescriptions
+        </Button>
+      }>
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center">
           <FileText size={40} className="text-muted-foreground opacity-40" />
           <p className="font-semibold text-lg">Prescription introuvable</p>
-          <Button variant="outline" onClick={() => navigate("/prescriptions")}>
-            <ArrowLeft className="w-4 h-4 mr-2" /> Retour aux prescriptions
-          </Button>
         </div>
       </AppLayout>
     );
   }
 
   return (
-    <AppLayout title={`Ordonnance ${numero()}`}>
+    <AppLayout title={`Ordonnance ${numero()}`} subHeader={
+      <Button size="sm" onClick={() => navigate("/prescriptions")}>
+        <ArrowLeft className="w-4 h-4 mr-2" /> Retour
+      </Button>
+    }>
       <div className="max-w-3xl mx-auto space-y-5">
 
         {/* Actions */}
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <Button variant="ghost" onClick={() => navigate("/prescriptions")}>
-            <ArrowLeft className="w-4 h-4 mr-2" /> Retour
-          </Button>
+        <div className="flex items-center justify-end flex-wrap gap-3">
           <div className="flex gap-2">
             <Button variant="outline" onClick={handlePrint}>
               <Printer className="w-4 h-4 mr-2" /> Imprimer

@@ -11,21 +11,21 @@ import {
 import { ArrowLeft, Plus, X, RefreshCw, ChevronDown, ChevronUp, User, Users } from "lucide-react";
 import { toast } from "sonner";
 import { DataService } from "@/services/dataService";
+import { getTarifs, type TarifSettings } from "@/services/tarifService";
 import { PhotoUpload } from "@/components/PhotoUpload";
 
-// ─── Constantes CNART ─────────────────────────────────────────────────────────
+// ─── Constantes CNART (valeurs par défaut — surchargées par les tarifs admin) ──
 
-export const PRIME_ENFANT     = 237_500;   // FCFA  (< 18 ans)
-export const PRIME_ADULTE     = 475_000;   // FCFA  (18 – 59 ans)
+export const PRIME_ENFANT     = 237_500;   // FCFA  (< 21 ans)
+export const PRIME_ADULTE     = 475_000;   // FCFA  (21 – 59 ans)
 export const PRIME_ADULTE_AGE = 712_500;   // FCFA  (60 ans et +)
-export const ACCESSOIRES      = 100_000;   // FCFA (fixe)
-export const TAUX_TAXE        = 0.106;     // 10,6 %
+export const TAUX_TAXE        = 0.10;      // 10 % (taux par défaut)
 
 export type TypeAssure = "enfant" | "adulte" | "adulte_age";
 
 export const TYPE_LABELS: Record<TypeAssure, string> = {
-  enfant:     "Enfant (< 18 ans)",
-  adulte:     "Adulte (18 – 59 ans)",
+  enfant:     "Enfant (< 21 ans)",
+  adulte:     "Adulte (21 – 59 ans)",
   adulte_age: "Personne âgée (60 ans et +)",
 };
 
@@ -45,7 +45,7 @@ export const TYPE_COLORS: Record<TypeAssure, string> = {
 export function typeFromDate(dateNaissance: string): TypeAssure {
   if (!dateNaissance) return "adulte";
   const age = Math.floor((Date.now() - new Date(dateNaissance).getTime()) / (365.25 * 86_400_000));
-  if (age < 18)  return "enfant";
+  if (age < 21)  return "enfant";
   if (age >= 60) return "adulte_age";
   return "adulte";
 }
@@ -94,18 +94,28 @@ export const REAJUSTEMENT_SP = [
 ];
 
 // ─── Calcul décompte ──────────────────────────────────────────────────────────
+// Formule : Prime Nette = Σ primes population
+//           CP          = Prime Nette × tauxCP %  (variable)
+//           Taxes       = Prime Nette × tauxTaxe %
+//           Total       = Prime Nette + CP + Taxes
 
-export function calcDecompte(beneficiaires: Beneficiaire[], typePrincipal: TypeAssure) {
+export function calcDecompte(
+  beneficiaires: Beneficiaire[],
+  typePrincipal: TypeAssure,
+  tarifs?: TarifSettings,
+) {
+  const t = tarifs ?? getTarifs();
   const tous = [{ type: typePrincipal }, ...beneficiaires];
   const nb: Record<TypeAssure, number> = { enfant: 0, adulte: 0, adulte_age: 0 };
   for (const p of tous) nb[p.type]++;
-  const primeEnfants    = nb.enfant     * PRIME_ENFANT;
-  const primeAdultes    = nb.adulte     * PRIME_ADULTE;
-  const primeAdultesAge = nb.adulte_age * PRIME_ADULTE_AGE;
+  const primeEnfants    = nb.enfant     * t.primeEnfant;
+  const primeAdultes    = nb.adulte     * t.primeAdulte;
+  const primeAdultesAge = nb.adulte_age * t.primeAdulteAge;
   const primeNette      = primeEnfants + primeAdultes + primeAdultesAge;
-  const taxes           = Math.round(primeNette * TAUX_TAXE);
-  const total           = primeNette + ACCESSOIRES + taxes;
-  return { nb, primeEnfants, primeAdultes, primeAdultesAge, primeNette, accessoires: ACCESSOIRES, taxes, total };
+  const cp              = Math.round(primeNette * t.tauxCP   / 100);
+  const taxes           = Math.round(primeNette * t.tauxTaxe / 100);
+  const total           = primeNette + cp + taxes;
+  return { nb, primeEnfants, primeAdultes, primeAdultesAge, primeNette, cp, tauxCP: t.tauxCP, taxes, tauxTaxe: t.tauxTaxe, total };
 }
 
 const DUREES = ["1", "2", "3"].map(v => ({ value: v, label: `${v} an${+v > 1 ? "s" : ""}` }));
@@ -140,6 +150,14 @@ export default function NewFamillePage() {
     echeanceAuto:  true,
   });
   const [beneficiaires, setBeneficiaires] = useState<Beneficiaire[]>([newBeneficiaire()]);
+  const [tarifs, setTarifs] = useState<TarifSettings>(() => ({
+    ...getTarifs(),
+    primeEnfant: 0,
+    primeAdulte: 0,
+    primeAdulteAge: 0,
+  }));
+  const [cpManuel,          setCpManuel]          = useState<string>("");
+  const [tauxRemboursement, setTauxRemboursement] = useState<number>(0);
 
   const dateFin = useMemo(() => {
     if (!formData.dateDebut) return "";
@@ -150,9 +168,12 @@ export default function NewFamillePage() {
   }, [formData.dateDebut, formData.dureeGarantie]);
 
   const decompte = useMemo(
-    () => calcDecompte(beneficiaires, souscripteur.type),
-    [beneficiaires, souscripteur.type]
+    () => calcDecompte(beneficiaires, souscripteur.type, tarifs),
+    [beneficiaires, souscripteur.type, tarifs]
   );
+  const tauxCpEffectif = cpManuel !== "" && !isNaN(Number(cpManuel)) ? Number(cpManuel) : decompte.tauxCP;
+  const cpEffectif     = Math.round(decompte.primeNette * tauxCpEffectif / 100);
+  const totalEffectif  = decompte.primeNette + cpEffectif + decompte.taxes;
 
   const addBeneficiaire = () => {
     setBeneficiaires(prev => [...prev, newBeneficiaire()]);
@@ -223,9 +244,14 @@ export default function NewFamillePage() {
       dateDebut:               formData.dateDebut,
       dureeGarantie:           formData.dureeGarantie,
       echeanceAuto:            formData.echeanceAuto,
-      prime:                   decompte.total.toString(),
+      prime:                   totalEffectif.toString(),
+      cp:                      cpEffectif.toString(),
       primeNette:              decompte.primeNette.toString(),
       taxes:                   decompte.taxes.toString(),
+      tauxRemboursement,
+      tarifPrimeEnfant:        tarifs.primeEnfant,
+      tarifPrimeAdulte:        tarifs.primeAdulte,
+      tarifPrimeAdulteAge:     tarifs.primeAdulteAge,
     };
     try {
       if (editingId) {
@@ -244,18 +270,18 @@ export default function NewFamillePage() {
   const totalPersonnes = 1 + beneficiaires.length;
 
   return (
-    <AppLayout>
+    <AppLayout subHeader={
+      <Button size="sm" onClick={() => navigate("/maladie-famille")}>
+        <ArrowLeft className="w-4 h-4 mr-2" /> Retour
+      </Button>
+    }>
       <div className="max-w-3xl mx-auto space-y-6 pb-10">
-        <Button variant="ghost" onClick={() => navigate("/maladie-famille")}>
-          <ArrowLeft className="w-4 h-4 mr-2" /> Retour
-        </Button>
-
         <Card className="p-6">
           <h2 className="text-2xl font-bold mb-1">
             {editingId ? "Modifier la Famille" : "Nouvelle Famille"}
           </h2>
           <p className="text-sm text-muted-foreground mb-6">
-            Assurance Maladie Famille — CNART Assurances · Taux de remboursement : <strong>80 %</strong>
+            Assurance Maladie Famille — CNART Assurances · Taux de remboursement : <strong>{tauxRemboursement > 0 ? `${tauxRemboursement} %` : "—"}</strong>
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-8">
@@ -519,6 +545,87 @@ export default function NewFamillePage() {
               </div>
             </section>
 
+            {/* ── Tarification ─────────────────────────────────────────── */}
+            <section className="space-y-4">
+              <h3 className="font-semibold text-base border-b pb-2">
+                Tarification
+                <span className="text-xs font-normal text-muted-foreground ml-2">— saisie par l'administrateur</span>
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div>
+                  <Label className="text-xs">Prime Enfant <span className="text-muted-foreground">({"<"} 21 ans)</span></Label>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <Input
+                      type="number" min={0} step={1000}
+                      value={tarifs.primeEnfant === 0 ? "" : tarifs.primeEnfant}
+                      onChange={e => setTarifs(t => ({ ...t, primeEnfant: e.target.value === "" ? 0 : Number(e.target.value) }))}
+                      placeholder="0"
+                      className="text-right font-mono text-sm"
+                    />
+                    <span className="text-xs text-muted-foreground shrink-0">FCFA</span>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs">Prime Adulte <span className="text-muted-foreground">(21–59 ans)</span></Label>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <Input
+                      type="number" min={0} step={1000}
+                      value={tarifs.primeAdulte === 0 ? "" : tarifs.primeAdulte}
+                      onChange={e => setTarifs(t => ({ ...t, primeAdulte: e.target.value === "" ? 0 : Number(e.target.value) }))}
+                      placeholder="0"
+                      className="text-right font-mono text-sm"
+                    />
+                    <span className="text-xs text-muted-foreground shrink-0">FCFA</span>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs">Prime Âgée <span className="text-muted-foreground">(60 ans et +)</span></Label>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <Input
+                      type="number" min={0} step={1000}
+                      value={tarifs.primeAdulteAge === 0 ? "" : tarifs.primeAdulteAge}
+                      onChange={e => setTarifs(t => ({ ...t, primeAdulteAge: e.target.value === "" ? 0 : Number(e.target.value) }))}
+                      placeholder="0"
+                      className="text-right font-mono text-sm"
+                    />
+                    <span className="text-xs text-muted-foreground shrink-0">FCFA</span>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs">Taux de remboursement</Label>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <Input
+                      type="number" min={0} max={100} step={1}
+                      value={tauxRemboursement === 0 ? "" : tauxRemboursement}
+                      onChange={e => setTauxRemboursement(e.target.value === "" ? 0 : Number(e.target.value))}
+                      placeholder="0"
+                      className="text-right font-mono text-sm"
+                    />
+                    <span className="text-xs text-muted-foreground shrink-0">%</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Calcul direct : part remboursée par personne/an */}
+              {tauxRemboursement > 0 && (tarifs.primeEnfant > 0 || tarifs.primeAdulte > 0 || tarifs.primeAdulteAge > 0) && (
+                <div className="rounded-lg border border-green-200 bg-green-50 p-3 grid grid-cols-3 gap-3 text-xs">
+                  {[
+                    { label: "Enfant", prime: tarifs.primeEnfant },
+                    { label: "Adulte", prime: tarifs.primeAdulte },
+                    { label: "Âgé",   prime: tarifs.primeAdulteAge },
+                  ].map(({ label, prime }) => (
+                    <div key={label} className="text-center">
+                      <p className="font-semibold text-green-800">{label}</p>
+                      <p className="font-mono font-bold text-green-700 text-sm mt-0.5">
+                        {prime > 0 ? Math.round(prime * tauxRemboursement / 100).toLocaleString("fr-FR") + " FCFA" : "—"}
+                      </p>
+                      <p className="text-green-600 mt-0.5">remboursé / pers. / an</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
             {/* ── Décompte de la prime ─────────────────────────────────── */}
             <section className="space-y-3">
               <h3 className="font-semibold text-base border-b pb-2">Décompte de la prime</h3>
@@ -528,7 +635,10 @@ export default function NewFamillePage() {
                   <div key={t} className={`p-3 rounded-lg border ${TYPE_COLORS[t]}`}>
                     <p className="text-xs opacity-80">{t === "enfant" ? "Enfant(s)" : t === "adulte" ? "Adulte(s)" : "Âgé(s)"}</p>
                     <p className="font-bold text-lg">{decompte.nb[t]}</p>
-                    <p className="text-[10px] opacity-70">{TYPE_PRICES[t].toLocaleString("fr-FR")} FCFA/pers</p>
+                    <p className="text-[10px] opacity-70">
+                    {t === "enfant" ? tarifs.primeEnfant : t === "adulte" ? tarifs.primeAdulte : tarifs.primeAdulteAge}
+                    {" "}FCFA/pers
+                  </p>
                   </div>
                 ))}
               </div>
@@ -537,13 +647,12 @@ export default function NewFamillePage() {
                 <div className="bg-gray-50 px-4 py-2 font-semibold text-xs text-muted-foreground uppercase tracking-wide">
                   Décompte annuel × {formData.dureeGarantie} an{+formData.dureeGarantie > 1 ? "s" : ""}
                 </div>
+                {/* Lignes population */}
                 {[
-                  { label: `Enfants (${PRIME_ENFANT.toLocaleString()} × ${decompte.nb.enfant})`,         value: decompte.primeEnfants,    show: decompte.nb.enfant > 0 },
-                  { label: `Adultes (${PRIME_ADULTE.toLocaleString()} × ${decompte.nb.adulte})`,         value: decompte.primeAdultes,    show: decompte.nb.adulte > 0 },
-                  { label: `Personnes âgées (${PRIME_ADULTE_AGE.toLocaleString()} × ${decompte.nb.adulte_age})`, value: decompte.primeAdultesAge, show: decompte.nb.adulte_age > 0 },
-                  { label: "Prime nette totale", value: decompte.primeNette, show: true, bold: true },
-                  { label: "Accessoires",        value: decompte.accessoires, show: true },
-                  { label: `Taxes (${(TAUX_TAXE * 100).toFixed(1)} %)`, value: decompte.taxes, show: true },
+                  { label: `Enfants (${tarifs.primeEnfant.toLocaleString("fr-FR")} × ${decompte.nb.enfant})`,                value: decompte.primeEnfants,    show: decompte.nb.enfant > 0 },
+                  { label: `Adultes (${tarifs.primeAdulte.toLocaleString("fr-FR")} × ${decompte.nb.adulte})`,                value: decompte.primeAdultes,    show: decompte.nb.adulte > 0 },
+                  { label: `Personnes âgées (${tarifs.primeAdulteAge.toLocaleString("fr-FR")} × ${decompte.nb.adulte_age})`, value: decompte.primeAdultesAge, show: decompte.nb.adulte_age > 0 },
+                  { label: "Prime nette (= Population)", value: decompte.primeNette, show: true, bold: true },
                 ].filter(r => r.show).map((row, i) => (
                   <div key={i} className={`flex justify-between items-center px-4 py-2.5 border-t ${(row as any).bold ? "bg-blue-50 font-semibold" : ""}`}>
                     <span className="text-sm">{row.label}</span>
@@ -552,10 +661,46 @@ export default function NewFamillePage() {
                     </span>
                   </div>
                 ))}
+
+                {/* CP — saisie manuelle (%) */}
+                <div className="flex items-center justify-between px-4 py-2.5 border-t gap-4">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-sm font-medium">CP — Chargements Professionnels</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      Montant : {(cpEffectif * Number(formData.dureeGarantie)).toLocaleString("fr-FR")} FCFA
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={0.1}
+                      value={cpManuel}
+                      onChange={e => setCpManuel(e.target.value)}
+                      placeholder={String(decompte.tauxCP)}
+                      className="w-24 text-right font-mono text-sm border rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    />
+                    <span className="text-sm font-semibold text-muted-foreground">%</span>
+                    {cpManuel !== "" && (
+                      <button type="button" onClick={() => setCpManuel("")}
+                        className="text-gray-400 hover:text-gray-600" title="Réinitialiser">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Taxes */}
+                <div className="flex justify-between items-center px-4 py-2.5 border-t">
+                  <span className="text-sm">Taxes ({decompte.tauxTaxe.toFixed(1)} %)</span>
+                  <span className="font-mono text-sm">{(decompte.taxes * Number(formData.dureeGarantie)).toLocaleString("fr-FR")} FCFA</span>
+                </div>
+
                 <div className="flex justify-between items-center px-4 py-3 border-t bg-gradient-to-r from-blue-600 to-purple-600 text-white">
                   <span className="font-bold text-base">TOTAL À PAYER</span>
                   <span className="font-bold text-xl font-mono">
-                    {(decompte.total * Number(formData.dureeGarantie)).toLocaleString("fr-FR")} FCFA
+                    {(totalEffectif * Number(formData.dureeGarantie)).toLocaleString("fr-FR")} FCFA
                   </span>
                 </div>
               </div>

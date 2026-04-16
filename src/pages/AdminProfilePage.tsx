@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { User, Mail, Phone, MapPin, Lock, Camera } from "lucide-react";
+import { User, Mail, Phone, MapPin, Lock, Camera, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
+import { getTarifs, saveTarifs, TARIF_DEFAULTS, type TarifSettings } from "@/services/tarifService";
 
 export default function AdminProfilePage() {
   const { user } = useAuth();
@@ -31,6 +32,33 @@ export default function AdminProfilePage() {
   const handleSave = () => {
     toast.success("Profil mis à jour avec succès");
     setIsEditing(false);
+  };
+
+  const [tarifs, setTarifs] = useState<TarifSettings>(() => getTarifs());
+  const [tarifEditing, setTarifEditing] = useState(false);
+  const [tarifDraft,   setTarifDraft]   = useState<TarifSettings>(() => getTarifs());
+
+  const handleTarifSave = () => {
+    // Validation basique
+    const fields: (keyof TarifSettings)[] = ["primeEnfant", "primeAdulte", "primeAdulteAge", "tauxTaxe", "tauxCP"];
+    for (const f of fields) {
+      if (isNaN(tarifDraft[f]) || tarifDraft[f] < 0) {
+        toast.error("Veuillez saisir des valeurs numériques positives");
+        return;
+      }
+    }
+    saveTarifs(tarifDraft);
+    setTarifs(tarifDraft);
+    setTarifEditing(false);
+    toast.success("Paramètres tarifaires enregistrés");
+  };
+
+  const handleTarifReset = () => {
+    setTarifDraft({ ...TARIF_DEFAULTS });
+    saveTarifs({ ...TARIF_DEFAULTS });
+    setTarifs({ ...TARIF_DEFAULTS });
+    setTarifEditing(false);
+    toast.success("Tarifs réinitialisés aux valeurs par défaut");
   };
 
   const handlePasswordChange = () => {
@@ -182,6 +210,116 @@ export default function AdminProfilePage() {
             >
               Changer le mot de passe
             </Button>
+          </div>
+        </Card>
+
+        {/* ── Paramètres Tarifaires ── */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-bold flex items-center gap-2">
+              <Settings className="w-5 h-5" />
+              Paramètres Tarifaires
+            </h3>
+            <div className="flex gap-2">
+              {tarifEditing ? (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => { setTarifDraft(tarifs); setTarifEditing(false); }}>
+                    Annuler
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleTarifReset} className="text-amber-600 border-amber-300 hover:bg-amber-50">
+                    Réinitialiser
+                  </Button>
+                  <Button size="sm" onClick={handleTarifSave}>
+                    Enregistrer
+                  </Button>
+                </>
+              ) : (
+                <Button variant="outline" size="sm" onClick={() => { setTarifDraft(tarifs); setTarifEditing(true); }}>
+                  Modifier les tarifs
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            {/* Primes par catégorie */}
+            <div>
+              <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                Primes annuelles par assuré (FCFA)
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {[
+                  { key: "primeEnfant"    as const, label: "Prime Enfant",         sub: "< 18 ans",    color: "border-green-200 bg-green-50" },
+                  { key: "primeAdulte"    as const, label: "Prime Adulte",         sub: "18 – 59 ans", color: "border-blue-200 bg-blue-50" },
+                  { key: "primeAdulteAge" as const, label: "Prime Personne Âgée",  sub: "60 ans et +", color: "border-purple-200 bg-purple-50" },
+                ].map(({ key, label, sub, color }) => (
+                  <div key={key} className={`rounded-lg border p-4 ${color}`}>
+                    <Label className="text-xs font-semibold">{label}</Label>
+                    <p className="text-xs text-muted-foreground mb-2">{sub}</p>
+                    {tarifEditing ? (
+                      <Input
+                        type="number"
+                        min={0}
+                        value={tarifDraft[key]}
+                        onChange={e => setTarifDraft({ ...tarifDraft, [key]: Number(e.target.value) })}
+                        className="bg-white"
+                      />
+                    ) : (
+                      <p className="text-lg font-bold font-mono">
+                        {tarifs[key].toLocaleString("fr-FR")} <span className="text-xs font-normal">FCFA</span>
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Taux */}
+            <div>
+              <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                Taux applicables (%)
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[
+                  { key: "tauxCP"    as const, label: "CP — Chargements Professionnels", sub: "Appliqué sur la prime nette", color: "border-orange-200 bg-orange-50" },
+                  { key: "tauxTaxe"  as const, label: "Taux de taxe",                    sub: "Appliqué sur la prime nette", color: "border-gray-200 bg-gray-50" },
+                ].map(({ key, label, sub, color }) => (
+                  <div key={key} className={`rounded-lg border p-4 ${color}`}>
+                    <Label className="text-xs font-semibold">{label}</Label>
+                    <p className="text-xs text-muted-foreground mb-2">{sub}</p>
+                    {tarifEditing ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min={0}
+                          max={100}
+                          step={0.1}
+                          value={tarifDraft[key]}
+                          onChange={e => setTarifDraft({ ...tarifDraft, [key]: Number(e.target.value) })}
+                          className="bg-white"
+                        />
+                        <span className="text-sm font-semibold">%</span>
+                      </div>
+                    ) : (
+                      <p className="text-lg font-bold font-mono">
+                        {tarifs[key].toFixed(1)} <span className="text-xs font-normal">%</span>
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Résumé formule */}
+            <div className="rounded-lg border bg-blue-50 border-blue-200 p-4 text-sm text-blue-800">
+              <p className="font-semibold mb-1">Formule de calcul appliquée</p>
+              <p className="text-xs space-y-0.5">
+                Prime Nette = (Enfants × {tarifs.primeEnfant.toLocaleString("fr-FR")}) + (Adultes × {tarifs.primeAdulte.toLocaleString("fr-FR")}) + (Âgés × {tarifs.primeAdulteAge.toLocaleString("fr-FR")})<br />
+                CP = Prime Nette × {tarifs.tauxCP} %<br />
+                Taxes = Prime Nette × {tarifs.tauxTaxe} %<br />
+                <strong>Total = Prime Nette + CP + Taxes</strong>
+              </p>
+            </div>
           </div>
         </Card>
 

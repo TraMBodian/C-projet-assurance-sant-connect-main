@@ -25,12 +25,13 @@ export default function NewConsultationPage() {
   };
 
   return (
-    <AppLayout title="Nouvelle consultation">
+    <AppLayout title="Nouvelle consultation" subHeader={
+      <Button size="sm" onClick={() => navigate('/consultations')}>
+        <ArrowLeft className="w-4 h-4 mr-2" /> Retour
+      </Button>
+    }>
       <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
         <div className="w-full max-w-2xl space-y-6">
-          <Button variant="ghost" onClick={() => navigate('/consultations')} className="mb-4">
-            <ArrowLeft className="w-4 h-4 mr-2" /> Retour
-          </Button>
 
           <Card className="p-6">
             <form onSubmit={handleSubmit} className="space-y-6">
