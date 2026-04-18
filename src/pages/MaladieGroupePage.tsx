@@ -8,8 +8,9 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Plus, Search, Building2, Users, TrendingUp, Pencil, Trash2,
-  Calendar, RefreshCw, ShieldCheck, ChevronDown, ChevronUp,
+  Calendar, RefreshCw, ShieldCheck, ChevronDown, ChevronUp, ArrowRightLeft,
 } from "lucide-react";
+import { MouvementModal } from "@/components/MouvementModal";
 import { motion } from "framer-motion";
 import {
   getGarantiesCNART, REAJUSTEMENT_SP,
@@ -101,7 +102,8 @@ export default function MaladieGroupePage() {
   const [search, setSearch]             = useState("");
   const [showGaranties, setShowGaranties] = useState(false);
   const [showReajust, setShowReajust]     = useState(false);
-  const [expandedGroupe, setExpandedGroupe] = useState<number | null>(null);
+  const [expandedGroupe, setExpandedGroupe]     = useState<number | null>(null);
+  const [mouvementGroupe, setMouvementGroupe]   = useState<any | null>(null);
   const tarifs = getTarifs();
 
   useEffect(() => {
@@ -147,6 +149,7 @@ export default function MaladieGroupePage() {
   );
 
   return (
+    <>
     <AppLayout>
       <div className="space-y-4 sm:space-y-6">
 
@@ -468,7 +471,14 @@ export default function MaladieGroupePage() {
                         )}
 
                         {/* Actions */}
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            onClick={() => setMouvementGroupe(groupe)}
+                            variant="outline" size="sm" className="text-xs h-8 border-blue-300 text-blue-700 hover:bg-blue-50"
+                          >
+                            <ArrowRightLeft className="w-3.5 h-3.5 mr-1" />
+                            <span>Mouvement</span>
+                          </Button>
                           <Button
                             onClick={() => navigate(`/maladie-groupe/new?id=${groupe.id}`)}
                             variant="outline" size="sm" className="text-xs h-8"
@@ -501,5 +511,18 @@ export default function MaladieGroupePage() {
         </div>
       </div>
     </AppLayout>
+
+    {mouvementGroupe && (
+      <MouvementModal
+        contrat={mouvementGroupe}
+        contratType="groupe"
+        onClose={() => setMouvementGroupe(null)}
+        onSaved={() => {
+          DataService.getGroupes().then(data => setGroupes(data ?? []));
+          setMouvementGroupe(null);
+        }}
+      />
+    )}
+    </>
   );
 }

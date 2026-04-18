@@ -8,8 +8,9 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Plus, Search, Users, UserCheck, TrendingUp, Pencil, Trash2,
-  Calendar, RefreshCw, ShieldCheck, ChevronDown, ChevronUp, FileText,
+  Calendar, RefreshCw, ShieldCheck, ChevronDown, ChevronUp, ArrowRightLeft,
 } from "lucide-react";
+import { MouvementModal } from "@/components/MouvementModal";
 import { PhotoAvatar } from "@/components/PhotoUpload";
 import { motion } from "framer-motion";
 import {
@@ -57,7 +58,8 @@ export default function MaladieFamillePage() {
   const [showGaranties, setShowGaranties] = useState(false);
   const [showReajust, setShowReajust]     = useState(false);
   const [showConditions, setShowConditions] = useState(false);
-  const [expanded, setExpanded]     = useState<number | null>(null);
+  const [expanded, setExpanded]           = useState<number | null>(null);
+  const [mouvementFamille, setMouvementFamille] = useState<any | null>(null);
   const tarifs = getTarifs();
 
   useEffect(() => {
@@ -107,6 +109,7 @@ export default function MaladieFamillePage() {
   );
 
   return (
+    <>
     <AppLayout>
       <div className="space-y-4 sm:space-y-6">
 
@@ -486,7 +489,14 @@ export default function MaladieFamillePage() {
                         )}
 
                         {/* Actions */}
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            onClick={() => setMouvementFamille(famille)}
+                            variant="outline" size="sm" className="text-xs h-8 border-blue-300 text-blue-700 hover:bg-blue-50"
+                          >
+                            <ArrowRightLeft className="w-3.5 h-3.5 mr-1" />
+                            <span>Mouvement</span>
+                          </Button>
                           <Button
                             onClick={() => navigate(`/maladie-famille/new?id=${famille.id}`)}
                             variant="outline" size="sm" className="text-xs h-8"
@@ -519,5 +529,19 @@ export default function MaladieFamillePage() {
         </div>
       </div>
     </AppLayout>
+
+    {/* Modal mouvements famille */}
+    {mouvementFamille && (
+      <MouvementModal
+        contrat={mouvementFamille}
+        contratType="famille"
+        onClose={() => setMouvementFamille(null)}
+        onSaved={() => {
+          DataService.getFamilles().then(data => setFamilles(data ?? []));
+          setMouvementFamille(null);
+        }}
+      />
+    )}
+    </>
   );
 }

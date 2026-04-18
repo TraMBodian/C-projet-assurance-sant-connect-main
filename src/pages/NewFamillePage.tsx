@@ -8,11 +8,11 @@ import { Card } from "@/components/ui/card";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Plus, X, RefreshCw, ChevronDown, ChevronUp, User, Users, FileText, Globe } from "lucide-react";
+import { ArrowLeft, Plus, X, RefreshCw, ChevronDown, ChevronUp, User, Users, Globe } from "lucide-react";
 import { toast } from "sonner";
 import { DataService } from "@/services/dataService";
 import { getTarifs, type TarifSettings } from "@/services/tarifService";
-import { PhotoUpload } from "@/components/PhotoUpload";
+import { LogoUpload } from "@/components/PhotoUpload";
 
 // ─── Constantes CNART (valeurs par défaut — surchargées par les tarifs admin) ──
 
@@ -312,7 +312,7 @@ export default function NewFamillePage() {
               </h3>
 
               <div className="flex items-start gap-4">
-                <PhotoUpload photo={photo} onChange={setPhoto} size="lg" rounded="full" label="Photo" />
+                <LogoUpload logo={photo} onChange={setPhoto} size={88} rounded label="Photo" />
 
                 <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="sm:col-span-2">

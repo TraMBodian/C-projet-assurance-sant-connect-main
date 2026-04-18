@@ -77,12 +77,17 @@ export function LogoUpload({
   logo,
   onChange,
   size = 80,
+  rounded = false,
+  label = "Logo (optionnel)",
 }: {
   logo?: string;
   onChange: (base64: string) => void;
   size?: number;
+  rounded?: boolean;
+  label?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const r = rounded ? "rounded-full" : "rounded-xl";
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -100,25 +105,24 @@ export function LogoUpload({
         type="button"
         onClick={() => inputRef.current?.click()}
         style={{ width: size, height: size }}
-        className="relative rounded-xl overflow-hidden bg-gradient-to-br from-gray-100 to-blue-50 border-2 border-dashed border-blue-300 hover:border-blue-500 transition-colors group cursor-pointer shrink-0"
-        title="Cliquer pour choisir un logo"
+        className={`relative ${r} overflow-hidden bg-gradient-to-br from-gray-100 to-blue-50 border-2 border-dashed border-blue-300 hover:border-blue-500 transition-colors group cursor-pointer shrink-0`}
+        title={`Cliquer pour choisir ${rounded ? "une photo" : "un logo"}`}
       >
         {logo ? (
-          <img src={logo} alt="logo" className="w-full h-full object-contain p-1" />
+          <img src={logo} alt="photo" className={`w-full h-full object-cover`} />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center gap-1">
-            <Building2 className="w-7 h-7 text-blue-300" />
-            <span className="text-[9px] text-blue-400 font-medium">LOGO</span>
+            {rounded ? <User className="w-7 h-7 text-blue-300" /> : <Building2 className="w-7 h-7 text-blue-300" />}
           </div>
         )}
-        <div className="absolute bottom-1 right-1 w-5 h-5 bg-blue-600 rounded-md flex items-center justify-center shadow border border-white group-hover:bg-blue-700 transition-colors">
+        <div className={`absolute bottom-1 right-1 w-5 h-5 bg-blue-600 ${rounded ? "rounded-full" : "rounded-md"} flex items-center justify-center shadow border border-white group-hover:bg-blue-700 transition-colors`}>
           <Camera className="w-2.5 h-2.5 text-white" />
         </div>
-        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center">
+        <div className={`absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity ${r} flex items-center justify-center`}>
           <Camera className="w-6 h-6 text-white" />
         </div>
       </button>
-      <span className="text-[10px] text-muted-foreground">Logo (optionnel)</span>
+      <span className="text-[10px] text-muted-foreground">{label}</span>
       <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
     </div>
   );
