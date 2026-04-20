@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
   Users, Shield, FileText, Banknote, Stethoscope, Pill,
@@ -67,6 +67,53 @@ function formatMontant(val: number): string {
   if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(1)}M`;
   if (val >= 1_000)     return `${(val / 1_000).toFixed(0)}k`;
   return String(val);
+}
+
+// ─── Dashboard Header ─────────────────────────────────────────────────────────
+
+function DashboardHeader({ user, onRefresh }: { user: any; onRefresh: () => void }) {
+  const now = useMemo(() => new Date(), []);
+
+  const dateLabel = now.toLocaleDateString("fr-FR", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric",
+  });
+  const timeLabel = now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+
+  const roleLabel = user?.role === "admin" ? "Administrateur"
+    : user?.role === "agent" ? "Agent"
+    : user?.role === "client" ? "Client"
+    : "Utilisateur";
+
+  return (
+    <div className="flex items-center justify-between gap-4 pb-4 border-b border-border/60">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
+            {user?.full_name || roleLabel}
+          </h1>
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200">
+            {roleLabel}
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
+          <Activity size={11} className="text-green-500" />
+          <span>Papy Services Assurances</span>
+          <span className="text-border">·</span>
+          <span className="capitalize">{dateLabel}</span>
+          <span className="text-border">·</span>
+          <Clock size={11} />
+          <span>{timeLabel}</span>
+        </p>
+      </div>
+      <button
+        onClick={onRefresh}
+        title="Actualiser les données"
+        className="p-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0"
+      >
+        <RefreshCw size={15} />
+      </button>
+    </div>
+  );
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -196,24 +243,8 @@ export default function Dashboard() {
     <AppLayout title="Tableau de bord">
       <div className="space-y-5 lg:space-y-6">
 
-        {/* ── Greeting ──────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900 truncate">
-              Bonjour, {user?.full_name?.split(' ')[0] || 'Administrateur'}
-            </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-              Voici un aperçu de votre activité
-            </p>
-          </div>
-          <button
-            onClick={fetchStats}
-            title="Actualiser"
-            className="p-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          >
-            <RefreshCw size={16} />
-          </button>
-        </div>
+        {/* ── Header professionnel ─────────────────────────────────────── */}
+        <DashboardHeader user={user} onRefresh={fetchStats} />
 
         {/* ── Main KPI cards ────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

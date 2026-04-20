@@ -125,8 +125,8 @@ export default function AppSidebar() {
           onClick={() => navigate("/")}
           className={`flex items-center gap-3 px-4 py-5 flex-1 hover:bg-sidebar-accent transition-colors text-left min-w-0 ${collapsed && !isMobile ? 'justify-center px-0' : ''}`}
         >
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex-shrink-0 flex items-center justify-center">
-            <span className="text-white font-bold text-xs">PS</span>
+          <div className="w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center bg-white">
+            <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
           </div>
           {(!collapsed || isMobile) && (
             <div className="min-w-0">
