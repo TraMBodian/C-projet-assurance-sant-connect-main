@@ -118,20 +118,15 @@ export default function AppLayout({ children, title, subHeader }: AppLayoutProps
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
 
         {/* ── Top bar ────────────────────────────────────────────────────── */}
-        <header className="h-12 sm:h-14 border-b border-border bg-card flex items-center shrink-0 px-3 sm:px-5 gap-2 sm:gap-3">
+        <header className="h-10 sm:h-11 border-b border-border/40 bg-background/60 backdrop-blur-md flex items-center shrink-0 px-3 sm:px-5 gap-2 sm:gap-3">
 
           {/* Spacer for mobile menu button */}
           <div className="w-9 h-9 md:hidden flex-shrink-0" />
 
           {/* Title */}
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <img
-              src="/logo1.png"
-              alt="Logo"
-              className="w-7 h-7 object-contain flex-shrink-0 hidden sm:block"
-            />
             {title && (
-              <h2 className="font-semibold text-sm sm:text-base truncate text-gray-900">
+              <h2 className="font-semibold text-sm truncate text-gray-900">
                 {title}
               </h2>
             )}
