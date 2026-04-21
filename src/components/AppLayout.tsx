@@ -2,12 +2,16 @@ import { ReactNode, useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import AppSidebar from "./AppSidebar";
 import { UserMenu } from "./UserMenu";
-import { Search, User, Stethoscope } from "lucide-react";
+import { Search, User, Stethoscope, LogOut, Clock } from "lucide-react";
 import { NotificationSystem } from "@/components/NotificationSystem";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DataService } from "@/services/dataService";
 import { AIChatbot } from "@/components/AIChatbot";
+import { useAuth } from "@/context/AuthContext";
+
+const IDLE_TIMEOUT   = 30 * 60 * 1000; // 30 minutes
+const WARN_BEFORE    =  2 * 60 * 1000; // avertissement 2 min avant
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -29,11 +33,66 @@ let _cachedPrestataires: any[] | null = null;
 
 export default function AppLayout({ children, title, subHeader }: AppLayoutProps) {
   const navigate = useNavigate();
+  const { signOut } = useAuth();
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const [searchOpen,  setSearchOpen]  = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [allItems,    setAllItems]    = useState<SearchItem[]>([]);
+
+  // ── Timeout d'inactivité ────────────────────────────────────────────
+  const [showIdleWarning, setShowIdleWarning] = useState(false);
+  const [countdown,       setCountdown]       = useState(120);
+  const idleTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const warnTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const forceLogout = useCallback(async () => {
+    setShowIdleWarning(false);
+    await signOut();
+    navigate('/login', { replace: true });
+  }, [signOut, navigate]);
+
+  const resetIdleTimer = useCallback(() => {
+    if (showIdleWarning) return; // Ne pas reset si le warning est déjà affiché
+    if (idleTimer.current)  clearTimeout(idleTimer.current);
+    if (warnTimer.current)  clearTimeout(warnTimer.current);
+
+    warnTimer.current = setTimeout(() => {
+      setShowIdleWarning(true);
+      setCountdown(120);
+      countdownRef.current = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(countdownRef.current!);
+            forceLogout();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }, IDLE_TIMEOUT - WARN_BEFORE);
+
+    idleTimer.current = setTimeout(forceLogout, IDLE_TIMEOUT);
+  }, [showIdleWarning, forceLogout]);
+
+  useEffect(() => {
+    const events = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+    events.forEach(e => window.addEventListener(e, resetIdleTimer, { passive: true }));
+    resetIdleTimer();
+    return () => {
+      events.forEach(e => window.removeEventListener(e, resetIdleTimer));
+      if (idleTimer.current)    clearTimeout(idleTimer.current);
+      if (warnTimer.current)    clearTimeout(warnTimer.current);
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleStayConnected = () => {
+    setShowIdleWarning(false);
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    resetIdleTimer();
+  };
 
   // Charger les données une seule fois (avec cache)
   useEffect(() => {
@@ -228,6 +287,40 @@ export default function AppLayout({ children, title, subHeader }: AppLayoutProps
 
       {/* ── AI Chatbot ─────────────────────────────────────────────────── */}
       <AIChatbot />
+
+      {/* ── Alerte inactivité ──────────────────────────────────────────── */}
+      {showIdleWarning && (
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
+            <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center mx-auto mb-4">
+              <Clock size={28} className="text-orange-500" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Session sur le point d'expirer</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Vous serez déconnecté automatiquement dans
+            </p>
+            <div className="text-4xl font-black text-orange-500 mb-1">
+              {Math.floor(countdown / 60)}:{String(countdown % 60).padStart(2, '0')}
+            </div>
+            <p className="text-xs text-gray-400 mb-6">minutes d'inactivité détectée</p>
+            <div className="flex gap-3">
+              <button
+                onClick={forceLogout}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium transition-colors"
+              >
+                <LogOut size={15} />
+                Se déconnecter
+              </button>
+              <button
+                onClick={handleStayConnected}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors"
+              >
+                Rester connecté
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
