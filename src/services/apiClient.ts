@@ -28,6 +28,12 @@ export class ApiClient {
       const response = await fetch(url, { ...config, signal: controller.signal });
       clearTimeout(timeoutId);
 
+      if (response.status === 401) {
+        localStorage.removeItem('auth_token');
+        window.dispatchEvent(new CustomEvent('auth:expired'));
+        throw new Error('Session expirée. Veuillez vous reconnecter.');
+      }
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Erreur réseau' }));
         throw new Error(errorData.message || `HTTP ${response.status}`);

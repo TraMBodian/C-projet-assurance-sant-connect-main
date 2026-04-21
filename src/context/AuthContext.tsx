@@ -35,6 +35,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Déconnexion automatique si le token expire (401 reçu par l'API)
+  useEffect(() => {
+    const handler = () => {
+      setUser(null);
+      localStorage.removeItem('auth_token');
+    };
+    window.addEventListener('auth:expired', handler);
+    return () => window.removeEventListener('auth:expired', handler);
+  }, []);
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
