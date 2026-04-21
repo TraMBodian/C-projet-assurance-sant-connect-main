@@ -532,39 +532,26 @@ export default function ConditionsGeneralesPage() {
   return (
     <div ref={scrollRef} style={{ overflowY: "auto", height: "100vh" }}>
 
-      {/* Navbar principale — identique à la page d'accueil */}
-      <nav className="sticky top-0 z-10 bg-transparent backdrop-blur-lg border-b border-blue-100 rounded-b-3xl">
-        <div className="px-6">
-          <div className="flex items-center justify-between h-20">
-
-            {/* Logo — clique = retour */}
-            <button
-              onClick={() => navigate(-1)}
-              className="flex items-center gap-3 group"
-            >
-              <img src="/logo1.png" alt="Logo" className="w-12 h-12 object-contain group-hover:scale-110 transition-transform" />
-              <div>
-                <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Papy Services
-                </span>
-                <p className="text-xs text-gray-500 -mt-1">Assurances</p>
-              </div>
-            </button>
-
-            {/* Liens centre */}
-            <div className="hidden md:flex items-center gap-1">
-              <a href="/#features"      className="px-4 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all font-medium">Fonctionnalités</a>
-              <a href="/#testimonials"  className="px-4 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all font-medium">Témoignages</a>
-              <a href="/#contact"       className="px-4 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all font-medium">Contact</a>
-              <div className="w-px h-6 bg-gray-300 mx-2" />
-              <button onClick={() => navigate('/login')}  className="px-4 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all font-medium">Connexion</button>
-              <button onClick={() => navigate('/login')}  className="ml-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-medium shadow hover:opacity-90 transition-opacity">Commencer</button>
-            </div>
+      {/* Navbar flottante — identique à la page d'accueil */}
+      <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[100] w-[min(860px,calc(100vw-2rem))] bg-white/80 backdrop-blur-md border border-gray-200 rounded-2xl h-12 flex items-center px-4 shadow-sm">
+        <div className="flex items-center justify-between w-full">
+          <button onClick={() => navigate(-1)} className="flex items-center">
+            <img src="/logo1.png" alt="Logo" className="h-11 w-auto object-contain" />
+          </button>
+          <div className="hidden md:flex items-center gap-1">
+            <a href="/#features"     className="px-3 py-1.5 rounded-lg text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all">Fonctionnalités</a>
+            <a href="/#testimonials" className="px-3 py-1.5 rounded-lg text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all">Témoignages</a>
+            <a href="/contact"       className="px-3 py-1.5 rounded-lg text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all">Contact</a>
+            <div className="w-px h-5 mx-1 bg-gray-200" />
+            <button onClick={() => navigate('/login')} className="px-3 py-1.5 rounded-lg text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all">Connexion</button>
+            <button onClick={() => navigate('/login')} className="ml-1 px-3 py-1.5 rounded-lg text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors">Commencer</button>
           </div>
         </div>
+      </div>
 
-        {/* Ligne chapitres — scrollable */}
-        <div className="overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] border-t border-blue-50">
+      {/* Barre chapitres — sticky sous la navbar flottante */}
+      <div className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100 mt-16">
+        <div className="overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <div className="flex items-center gap-1 px-6 py-2 min-w-max">
             <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide mr-2">Chapitres :</span>
             {NAV_SECTIONS.map(({ id, label }) => (
@@ -582,7 +569,7 @@ export default function ConditionsGeneralesPage() {
             ))}
           </div>
         </div>
-      </nav>
+      </div>
 
       {/* Contenu */}
       <div className="max-w-4xl mx-auto px-4 py-10 space-y-14">
