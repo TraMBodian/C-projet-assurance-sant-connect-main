@@ -150,6 +150,14 @@ export class ApiClient {
     return this.request('/prestataires', { method: 'POST', body: JSON.stringify(data) });
   }
 
+  async updatePrestataire(id: string | number, data: any) {
+    return this.request(`/prestataires/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  }
+
+  async deletePrestataire(id: string | number) {
+    return this.request(`/prestataires/${id}`, { method: 'DELETE' });
+  }
+
   // Consultations
   async getConsultations() {
     return this.request<{ consultations: any[] }>('/consultations');

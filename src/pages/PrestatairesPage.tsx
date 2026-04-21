@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Search, MapPin, Phone, Mail, Loader2, AlertCircle, Building2 } from "lucide-react";
+import { Plus, Search, MapPin, Phone, Mail, Loader2, AlertCircle, Building2, Pencil, Trash2, Hash } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { DataService } from "@/services/dataService";
+import { useToast } from "@/hooks/use-toast";
 
 const typeColors: Record<string, string> = {
   HOPITAL:         "bg-blue-100 text-blue-700",
@@ -23,27 +24,60 @@ const typeLabels: Record<string, string> = {
   AUTRE:           "Autre",
 };
 
+const statutDot: Record<string, string> = {
+  ACTIF:    "bg-green-500",
+  INACTIF:  "bg-gray-400",
+  SUSPENDU: "bg-red-500",
+};
+
+const statutLabel: Record<string, string> = {
+  ACTIF:    "Actif",
+  INACTIF:  "Inactif",
+  SUSPENDU: "Suspendu",
+};
+
 export default function PrestatairesPage() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<string | null>(null);
   const [prestataires, setPrestataires] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadPrestataires = () => {
+    setLoading(true);
+    setError(false);
     DataService.getPrestataires()
       .then((data) => setPrestataires(data ?? []))
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { loadPrestataires(); }, []);
+
+  const handleDelete = async (p: any) => {
+    if (!confirm(`Supprimer "${p.nom}" ? Cette action est irréversible.`)) return;
+    setDeletingId(String(p.id));
+    try {
+      await DataService.deletePrestataire(p.id);
+      setPrestataires(prev => prev.filter(x => x.id !== p.id));
+      toast({ title: "Prestataire supprimé", description: `${p.nom} a été supprimé.` });
+    } catch {
+      toast({ title: "Erreur", description: "Impossible de supprimer ce prestataire.", variant: "destructive" });
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const filtered = prestataires.filter((p) => {
     const q = search.toLowerCase();
     const matchesSearch =
-      (p.nom || "").toLowerCase().includes(q) ||
-      (p.type || "").toLowerCase().includes(q) ||
-      (p.adresse || "").toLowerCase().includes(q);
+      (p.nom     || "").toLowerCase().includes(q) ||
+      (p.type    || "").toLowerCase().includes(q) ||
+      (p.adresse || "").toLowerCase().includes(q) ||
+      (p.numero  || "").toLowerCase().includes(q);
     const matchesType = filterType ? p.type === filterType : true;
     return matchesSearch && matchesType;
   });
@@ -60,7 +94,7 @@ export default function PrestatairesPage() {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Rechercher..."
+                placeholder="Rechercher par nom, type, adresse, numéro..."
                 className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground min-w-0 text-sm"
               />
             </div>
@@ -132,8 +166,8 @@ export default function PrestatairesPage() {
                 key={prest.id}
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.06 }}
-                className="bg-card rounded-xl p-4 sm:p-5 border border-border hover:shadow-md transition-shadow"
+                transition={{ delay: i * 0.05 }}
+                className="bg-card rounded-xl p-4 sm:p-5 border border-border hover:shadow-md transition-shadow group"
               >
                 {/* En-tête */}
                 <div className="flex items-start justify-between gap-2 mb-3">
@@ -148,32 +182,65 @@ export default function PrestatairesPage() {
                       </span>
                     </div>
                   </div>
-                  <span
-                    className={`w-2.5 h-2.5 rounded-full mt-1 shrink-0 ${prest.statut === "ACTIF" ? "bg-green-500" : "bg-gray-400"}`}
-                    title={prest.statut === "ACTIF" ? "Actif" : "Inactif"}
-                  />
+                  {/* Statut */}
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`w-2 h-2 rounded-full ${statutDot[prest.statut] ?? "bg-gray-400"}`} />
+                      <span className="text-xs text-muted-foreground">{statutLabel[prest.statut] ?? prest.statut}</span>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Numéro */}
+                {prest.numero && (
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Hash size={11} className="text-muted-foreground shrink-0" />
+                    <span className="text-xs text-muted-foreground font-mono">{prest.numero}</span>
+                  </div>
+                )}
 
                 {/* Coordonnées */}
                 <div className="space-y-1.5 text-sm text-muted-foreground">
                   {prest.telephone && (
                     <div className="flex items-center gap-2">
                       <Phone size={12} className="shrink-0" />
-                      <span className="text-xs sm:text-sm">{prest.telephone}</span>
+                      <span className="text-xs">{prest.telephone}</span>
                     </div>
                   )}
                   {prest.email && (
                     <div className="flex items-center gap-2">
                       <Mail size={12} className="shrink-0" />
-                      <span className="text-xs sm:text-sm truncate">{prest.email}</span>
+                      <span className="text-xs truncate">{prest.email}</span>
                     </div>
                   )}
                   {prest.adresse && (
                     <div className="flex items-start gap-2">
                       <MapPin size={12} className="shrink-0 mt-0.5" />
-                      <span className="text-xs sm:text-sm truncate">{prest.adresse}</span>
+                      <span className="text-xs truncate">{prest.adresse}</span>
                     </div>
                   )}
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2 mt-4 pt-3 border-t border-border">
+                  <button
+                    onClick={() => navigate(`/prestataires/${prest.id}`)}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-border bg-card hover:bg-muted transition-colors"
+                  >
+                    <Pencil size={12} />
+                    Modifier
+                  </button>
+                  <button
+                    onClick={() => handleDelete(prest)}
+                    disabled={deletingId === String(prest.id)}
+                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                  >
+                    {deletingId === String(prest.id)
+                      ? <Loader2 size={12} className="animate-spin" />
+                      : <Trash2 size={12} />
+                    }
+                    Supprimer
+                  </button>
                 </div>
               </motion.div>
             ))}

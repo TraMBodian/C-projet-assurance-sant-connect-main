@@ -20,6 +20,7 @@ import SinistreDetailsPage from "./pages/SinistreDetailsPage";
 import RemboursementsPage from "./pages/RemboursementsPage";
 import PrestatairesPage from "./pages/PrestatairesPage";
 import NewPrestatairePage from "./pages/NewPrestatairePage";
+import EditPrestatairePage from "./pages/EditPrestatairePage";
 import CartesPage from "./pages/CartesPage";
 import ConsultationsPage from "./pages/ConsultationsPage";
 import NewConsultationPage from "./pages/NewConsultationPage";
@@ -79,6 +80,7 @@ const App = () => (
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/prestataires" element={<ProtectedRoute element={<PrestatairesPage />} requiredRoles={['admin']} />} />
             <Route path="/prestataires/new" element={<ProtectedRoute element={<NewPrestatairePage />} requiredRoles={['admin']} />} />
+            <Route path="/prestataires/:id" element={<ProtectedRoute element={<EditPrestatairePage />} requiredRoles={['admin']} />} />
             <Route path="/archives" element={<ProtectedRoute element={<ArchivePage />} requiredRoles={['admin']} />} />
 
             {/* Routes admin + prestataire */}

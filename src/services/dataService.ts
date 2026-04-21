@@ -151,6 +151,14 @@ export class DataService {
     return apiClient.createPrestataire(data);
   }
 
+  static async updatePrestataire(id: string | number, data: any) {
+    return apiClient.updatePrestataire(id, data);
+  }
+
+  static async deletePrestataire(id: string | number) {
+    return apiClient.deletePrestataire(id);
+  }
+
   // Consultations
   static async getConsultations() {
     return withFallback(async () => {

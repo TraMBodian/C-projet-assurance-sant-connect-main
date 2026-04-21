@@ -51,11 +51,11 @@ export interface Prestataire {
   id: string;
   numero: string;
   nom: string;
-  specialite: string;
+  type: string;
   telephone: string;
   email: string;
   adresse: string;
-  statut: string;
+  statut: 'ACTIF' | 'INACTIF' | 'SUSPENDU';
 }
 
 export interface Sinistre {

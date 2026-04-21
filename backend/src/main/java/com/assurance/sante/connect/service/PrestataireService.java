@@ -35,6 +35,7 @@ public class PrestataireService {
         if (prestataireDetails.getTelephone() != null) prestataire.setTelephone(prestataireDetails.getTelephone());
         if (prestataireDetails.getEmail() != null) prestataire.setEmail(prestataireDetails.getEmail());
         if (prestataireDetails.getAdresse() != null) prestataire.setAdresse(prestataireDetails.getAdresse());
+        if (prestataireDetails.getStatut() != null) prestataire.setStatut(prestataireDetails.getStatut());
 
         return prestataireRepository.save(prestataire);
     }
