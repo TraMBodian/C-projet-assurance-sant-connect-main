@@ -2,23 +2,51 @@ version: '3.8'
 
 services:
   postgres:
-    image: postgres:16-alpine
-    container_name: assurance_postgres
+    image: postgres:16
+    container_name: postgres-db
     restart: always
     environment:
-      POSTGRES_DB: assurance_sante_db
-      POSTGRES_USER: postgres
+      POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: assurance_db
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U admin -d assurance_db"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  backend:
+    build: ./backend
+    container_name: spring-backend
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILE: postgres
+      DB_URL: jdbc:postgresql://postgres:5432/assurance_db
+      DB_USER: admin
+      DB_PASSWORD: admin123
+      JWT_SECRET: We7/Ty05ZUgeNXizXvsYVB2wNn1jiYR723q2Ho0EubelOwQhNSKtMizs/+29jNl1NGazGPrP2/WngrgDq1OuRw==
+      JWT_EXPIRATION_MS: 86400000
+    ports:
+      - "3001:3001"
+    entrypoint: ["sh", "-c", "java -jar app.jar --server.port=3001 --spring.profiles.active=postgres"]
+
+  frontend:
+    build: .
+    container_name: react-frontend
+    restart: always
+    depends_on:
+      - backend
+    environment:
+      VITE_API_BASE_URL: http://localhost:3001/api
+    ports:
+      - "5173:8080"
+
 volumes:
   postgres_data:
-    name: assurance_postgres_data

@@ -28,6 +28,10 @@ buildNumber.properties
 *~
 .DS_Store
 
-# Spring Boot files
-application.yml
-application.properties
+# Spring Boot config (contient des secrets via variables)
+application-dev.yml
+
+# Secrets locaux
+.env
+*.env
+!.env.example

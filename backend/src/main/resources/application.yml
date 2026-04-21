@@ -1,6 +1,6 @@
 spring:
   profiles:
-    active: postgres  # PostgreSQL via Docker
+    active: ${SPRING_PROFILE:postgres}
 
 ---
 spring:
@@ -31,9 +31,9 @@ spring:
     activate:
       on-profile: mysql
   datasource:
-    url: jdbc:mysql://localhost:3306/assurance_sante_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC
-    username: root
-    password: admin123
+    url: ${DB_URL:jdbc:mysql://localhost:3306/assurance_sante_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC}
+    username: ${DB_USER:assurance_app}
+    password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
@@ -50,9 +50,9 @@ spring:
     activate:
       on-profile: postgres
   datasource:
-    url: jdbc:postgresql://localhost:5432/assurance_sante_db
-    username: postgres
-    password: admin123
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/assurance_db}
+    username: ${DB_USER:admin}
+    password: ${DB_PASSWORD:admin123}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -60,7 +60,6 @@ spring:
     show-sql: true
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
 
 ---
@@ -70,8 +69,8 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: your-email@gmail.com
-    password: your-app-password
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
@@ -81,7 +80,7 @@ spring:
             required: true
 
 server:
-  port: 3001
+  port: ${PORT:3001}
 
 management:
   endpoints:
@@ -93,5 +92,5 @@ management:
       show-details: never
 
 app:
-  jwtSecret: We7/Ty05ZUgeNXizXvsYVB2wNn1jiYR723q2Ho0EubelOwQhNSKtMizs/+29jNl1NGazGPrP2/WngrgDq1OuRw==
-  jwtExpirationMs: 86400000
+  jwtSecret: ${JWT_SECRET}
+  jwtExpirationMs: ${JWT_EXPIRATION_MS:86400000}
