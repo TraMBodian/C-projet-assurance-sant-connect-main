@@ -88,10 +88,10 @@ const SignupPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="h-screen flex overflow-hidden">
 
       {/* ── Panneau gauche : branding ────────────────────────────── */}
-      <div className="hidden lg:flex lg:w-1/2 relative flex-col items-center justify-center p-12 overflow-hidden bg-blue-600">
+      <div className="hidden lg:flex lg:w-1/2 relative flex-col items-center justify-center p-12 overflow-hidden bg-blue-600 shrink-0">
         <div className="absolute -top-24 -left-24 w-80 h-80 bg-white/10 rounded-full blur-2xl" />
         <div className="absolute -bottom-24 -right-16 w-96 h-96 bg-blue-400/20 rounded-full blur-3xl" />
         <div className="absolute top-1/3 right-0 w-48 h-48 bg-blue-300/10 rounded-full blur-2xl" />
@@ -118,12 +118,12 @@ const SignupPage = () => {
       </div>
 
       {/* ── Panneau droit : formulaire ──────────────────────────── */}
-      <div className="w-full lg:w-1/2 flex flex-col items-center justify-start p-6 sm:p-10 bg-gray-50 relative overflow-auto">
+      <div className="w-full lg:w-1/2 flex flex-col items-center bg-gray-50 relative overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
 
         <div className="absolute inset-0 lg:hidden bg-gradient-to-b from-blue-50 to-gray-50 pointer-events-none" />
 
         {/* Logo mobile */}
-        <div className="lg:hidden flex flex-col items-center mb-8 relative z-10 mt-4">
+        <div className="lg:hidden flex flex-col items-center mb-6 relative z-10 pt-8">
           <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg mb-3">
             <img src="/logo1.png" alt="Logo" className="w-10 h-10 object-contain" />
           </div>
@@ -131,7 +131,7 @@ const SignupPage = () => {
         </div>
 
         {/* Carte formulaire */}
-        <div className="relative z-10 w-full max-w-sm sm:max-w-md bg-white rounded-2xl shadow-xl p-7 sm:p-10 border border-gray-100 my-6">
+        <div className="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-xl p-7 sm:p-10 border border-gray-100 my-8 mx-6">
 
           <div className="mb-7">
             <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Créer un compte</h2>
@@ -304,7 +304,7 @@ const SignupPage = () => {
           </div>
         </div>
 
-        <p className="relative z-10 mb-4 text-xs text-gray-400 text-center">
+        <p className="relative z-10 pb-6 text-xs text-gray-400 text-center">
           © {new Date().getFullYear()} Papy Services Assurances. Tous droits réservés.
         </p>
       </div>
