@@ -12,7 +12,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/assures")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000", "http://localhost:8084"})
 public class AssureController {
 
     private final AssureService assureService;

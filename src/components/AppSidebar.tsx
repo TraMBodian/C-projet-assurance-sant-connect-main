@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, UserCog, Shield, FileText, CreditCard,
   Stethoscope, Pill, ClipboardList, ChevronDown, ChevronRight,
   Menu, X, LogOut, Banknote, BarChart2, Archive,
-} from "lucide-react";
+} from "@/components/ui/Icons";
 import { useAuth } from "@/context/AuthContext";
 
 // ─── Types ────────────────────────────────────────────────────────────────────

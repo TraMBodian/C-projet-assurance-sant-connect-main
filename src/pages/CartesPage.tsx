@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Search, Download, QrCode, CreditCard, User, Loader2, ServerCrash } from "lucide-react";
+import { Search, Download, QrCode, CreditCard, User, Loader2, ServerCrash } from "@/components/ui/Icons";
 import AppLayout from "@/components/AppLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

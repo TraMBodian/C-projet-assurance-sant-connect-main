@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Pill, User, FileText, Download, Printer, Loader2, Calendar, Stethoscope, Clock } from "lucide-react";
+import { ArrowLeft, Pill, User, FileText, Download, Printer, Loader2, Calendar, Stethoscope, Clock } from "@/components/ui/Icons";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { apiClient } from "@/services/apiClient";

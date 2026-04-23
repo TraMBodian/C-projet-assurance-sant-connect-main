@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, XCircle, Clock, Mail } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Mail } from "@/components/ui/Icons";
 import { DataService } from "@/services/dataService";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";

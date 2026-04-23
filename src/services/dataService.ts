@@ -1,24 +1,11 @@
-// Data service - connecté au backend Spring Boot, avec fallback localStorage
+// Data service - connecté au backend Spring Boot
 import { apiClient } from './apiClient';
-import {
-  MOCK_ASSURES, MOCK_POLICES, MOCK_SINISTRES, MOCK_PRESTATAIRES,
-  MOCK_CONSULTATIONS, MOCK_PRESCRIPTIONS, MOCK_REMBOURSEMENTS,
-  MOCK_USERS, MOCK_CARTES,
-} from './mockData';
 
 // ─── Helpers réseau ───────────────────────────────────────────────────────────
 
 function isNetworkError(err: any): boolean {
   const msg: string = err?.message ?? "";
   return msg.includes("Failed to fetch") || msg.includes("NetworkError") || msg.includes("network");
-}
-
-async function withFallback<T>(apiCall: () => Promise<T>, fallback: T): Promise<T> {
-  try {
-    return await apiCall();
-  } catch {
-    return fallback;
-  }
 }
 
 // ─── Store localStorage (mode hors-ligne) ────────────────────────────────────
@@ -75,17 +62,12 @@ export class DataService {
 
   // Assurés
   static async getAssures() {
-    return withFallback(async () => {
-      const r = await apiClient.getAssures();
-      return r.assures;
-    }, MOCK_ASSURES);
+    const r = await apiClient.getAssures();
+    return r.assures;
   }
 
   static async getAssureById(id: string) {
-    return withFallback(
-      () => apiClient.getAssureById(id),
-      MOCK_ASSURES.find(a => String(a.id) === id) ?? null
-    );
+    return apiClient.getAssureById(id);
   }
 
   static async createAssure(data: any) {
@@ -102,10 +84,8 @@ export class DataService {
 
   // Polices
   static async getPolices() {
-    return withFallback(async () => {
-      const r = await apiClient.getPolices();
-      return r.polices;
-    }, MOCK_POLICES);
+    const r = await apiClient.getPolices();
+    return r.polices;
   }
 
   static async createPolice(data: any) {
@@ -122,17 +102,12 @@ export class DataService {
 
   // Sinistres
   static async getSinistres() {
-    return withFallback(async () => {
-      const r = await apiClient.getSinistres();
-      return r.sinistres;
-    }, MOCK_SINISTRES);
+    const r = await apiClient.getSinistres();
+    return r.sinistres;
   }
 
   static async getSinistreById(id: string) {
-    return withFallback(
-      () => apiClient.getSinistreById(id),
-      MOCK_SINISTRES.find(s => String(s.id) === id) ?? null
-    );
+    return apiClient.getSinistreById(id);
   }
 
   static async createSinistre(data: any) {
@@ -141,10 +116,8 @@ export class DataService {
 
   // Prestataires
   static async getPrestataires() {
-    return withFallback(async () => {
-      const r = await apiClient.getPrestataires();
-      return r.prestataires;
-    }, MOCK_PRESTATAIRES);
+    const r = await apiClient.getPrestataires();
+    return r.prestataires;
   }
 
   static async createPrestataire(data: any) {
@@ -161,10 +134,8 @@ export class DataService {
 
   // Consultations
   static async getConsultations() {
-    return withFallback(async () => {
-      const r = await apiClient.getConsultations();
-      return r.consultations;
-    }, MOCK_CONSULTATIONS);
+    const r = await apiClient.getConsultations();
+    return r.consultations;
   }
 
   static async createConsultation(data: any) {
@@ -173,10 +144,8 @@ export class DataService {
 
   // Prescriptions
   static async getPrescriptions() {
-    return withFallback(async () => {
-      const r = await apiClient.getPrescriptions();
-      return r.prescriptions;
-    }, MOCK_PRESCRIPTIONS);
+    const r = await apiClient.getPrescriptions();
+    return r.prescriptions;
   }
 
   static async createPrescription(data: any) {
@@ -185,26 +154,20 @@ export class DataService {
 
   // Remboursements
   static async getRemboursements() {
-    return withFallback(async () => {
-      const r = await apiClient.getRemboursements();
-      return r.remboursements;
-    }, MOCK_REMBOURSEMENTS);
+    const r = await apiClient.getRemboursements();
+    return r.remboursements;
   }
 
   // Cartes
   static async getCartes() {
-    return withFallback(async () => {
-      const r = await apiClient.getCartes();
-      return r.cartes;
-    }, MOCK_CARTES);
+    const r = await apiClient.getCartes();
+    return r.cartes;
   }
 
   // Users
   static async getUsers() {
-    return withFallback(async () => {
-      const r = await apiClient.getUsers();
-      return r.users;
-    }, MOCK_USERS);
+    const r = await apiClient.getUsers();
+    return r.users;
   }
 
   static async updateUser(id: string, data: any) {

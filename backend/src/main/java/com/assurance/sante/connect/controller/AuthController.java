@@ -8,6 +8,7 @@ import com.assurance.sante.connect.dto.ApiResponse;
 import com.assurance.sante.connect.service.AuthService;
 import com.assurance.sante.connect.security.JwtAuthenticationToken;
 import lombok.RequiredArgsConstructor;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,13 +25,13 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<AuthResponse>> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
         AuthResponse response = authService.login(request);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @PostMapping("/register")
-    public ResponseEntity<ApiResponse<AuthResponse>> register(@RequestBody RegisterRequest request) {
+    public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request) {
         AuthResponse response = authService.register(request);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -48,11 +49,5 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<String>> logout() {
         return ResponseEntity.ok(ApiResponse.success("Logout successful"));
-    }
-
-    // Endpoint de test pour vérifier les comptes admin
-    @GetMapping("/test-admin-accounts")
-    public ResponseEntity<ApiResponse<String>> testAdminAccounts() {
-        return ResponseEntity.ok(ApiResponse.success("Admin accounts should be created. Try login with: bassniang7@yahoo.fr / admin1 or bodianm372@gmail.com / admin1"));
     }
 }

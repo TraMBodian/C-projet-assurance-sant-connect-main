@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
+import { apiClient } from "@/services/apiClient";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, AreaChart, Area,
@@ -7,10 +8,9 @@ import {
 import {
   TrendingUp, TrendingDown, Users, Shield, FileText, Banknote,
   Stethoscope, ClipboardList, Loader2, RefreshCw,
-  UserCheck, AlertTriangle, WifiOff,
-} from "lucide-react";
+  UserCheck, AlertTriangle, ServerOff,
+} from "@/components/ui/Icons";
 import AppLayout from "@/components/AppLayout";
-import { MOCK_DASHBOARD, MOCK_SINISTRES, MOCK_PRESTATAIRES, MOCK_CONSULTATIONS, MOCK_USERS } from "@/services/mockData";
 
 // ─── Couleurs ────────────────────────────────────────────────────────────────
 
@@ -69,97 +69,21 @@ function KpiCard({
   );
 }
 
-// ─── Données mock pour mode démo ─────────────────────────────────────────────
-
-function buildMockStats() {
-  const sinMois = MOCK_DASHBOARD.chartData.map(c => ({
-    mois: c.mois,
-    sinistres: c.sinistres,
-    enAttente: Math.round(c.sinistres * 0.3),
-  }));
-  const statuts = [
-    { name: "En attente", value: MOCK_SINISTRES.filter(s => s.statut === "EN_ATTENTE").length },
-    { name: "En cours",   value: MOCK_SINISTRES.filter(s => s.statut === "EN_COURS").length },
-    { name: "Approuvé",   value: MOCK_SINISTRES.filter(s => s.statut === "APPROUVE").length },
-    { name: "Payé",       value: MOCK_SINISTRES.filter(s => s.statut === "PAYE").length },
-    { name: "Rejeté",     value: MOCK_SINISTRES.filter(s => s.statut === "REJETE").length },
-  ].filter(s => s.value > 0);
-
-  // Top prestataires : compter les consultations
-  const countMap: Record<string, number> = {};
-  MOCK_CONSULTATIONS.forEach(c => {
-    const n = c.prestataire.nom;
-    countMap[n] = (countMap[n] || 0) + 1;
-  });
-  const topPrest = Object.entries(countMap)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([nom, consultations]) => ({ nom: nom.replace(/^(Hôpital|Clinique|Cabinet|Pharmacie|Laboratoire|Polyclinique)\s*/i, "").slice(0, 20), consultations }));
-
-  const totalPaye    = MOCK_DASHBOARD.montantRembourse;
-  const totalReclame = MOCK_SINISTRES.reduce((s, sin) => s + sin.montantReclamation, 0);
-  const totalAccorde = MOCK_SINISTRES.filter(s => s.montantAccorde).reduce((s, sin) => s + (sin.montantAccorde || 0), 0);
-
-  const adminCount = MOCK_USERS.filter(u => u.role === "ADMIN").length;
-  const prestCount = MOCK_USERS.filter(u => u.role === "PRESTATAIRE").length;
-  const clientCount = MOCK_USERS.filter(u => u.role === "CLIENT").length;
-  const pendingCount = MOCK_USERS.filter(u => u.statut === "PENDING").length;
-
-  return {
-    totalAssures:    MOCK_DASHBOARD.totalAssures,
-    totalPolices:    MOCK_DASHBOARD.totalPolices,
-    totalSinistres:  MOCK_DASHBOARD.totalSinistres,
-    tendances: {
-      sinistresThisMonth:     MOCK_DASHBOARD.chartData.at(-1)?.sinistres ?? 0,
-      sinistresLastMonth:     MOCK_DASHBOARD.chartData.at(-2)?.sinistres ?? 0,
-      consultationsThisMonth: 2,
-      consultationsLastMonth: 3,
-    },
-    financier: {
-      totalReclame,
-      totalAccorde,
-      totalPaye,
-      tauxApprobation: totalReclame > 0 ? Math.round(totalAccorde / totalReclame * 100) : 0,
-    },
-    userStats: {
-      total:        MOCK_USERS.length,
-      admins:       adminCount,
-      prestataires: prestCount,
-      clients:      clientCount,
-      pending:      pendingCount,
-      actifs:       MOCK_USERS.filter(u => u.statut === "ACTIVE").length,
-    },
-    sinistresParMois:  sinMois,
-    sinistresByStatut: statuts,
-    topPrestataires:   topPrest,
-  };
-}
-
 // ─── Page principale ─────────────────────────────────────────────────────────
 
 export default function StatistiquesPage() {
   const [data,    setData]    = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [isDemo,  setIsDemo]  = useState(false);
+  const [error,   setError]   = useState(false);
 
   const fetchData = useCallback(() => {
     setLoading(true);
-    setIsDemo(false);
-    const ctrl = new AbortController();
-    const tid  = setTimeout(() => ctrl.abort(), 8_000);
+    setError(false);
 
-    fetch(
-      `${import.meta.env.VITE_API_BASE_URL || "http://localhost:3001/api"}/stats`,
-      { signal: ctrl.signal }
-    )
-      .then(res => { if (!res.ok) throw new Error(); return res.json(); })
-      .then(json => setData(json?.data ?? json))
-      .catch(() => {
-        // Backend indisponible → mode démo avec données mock
-        setData(buildMockStats());
-        setIsDemo(true);
-      })
-      .finally(() => { clearTimeout(tid); setLoading(false); });
+    apiClient.request<any>('/stats')
+      .then(data => setData(data))
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -173,6 +97,30 @@ export default function StatistiquesPage() {
             <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
             <p className="text-sm text-muted-foreground">Calcul des statistiques…</p>
           </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  // ── Error ────────────────────────────────────────────────────────────────
+  if (error || !data) {
+    return (
+      <AppLayout title="Statistiques">
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
+          <ServerOff size={48} className="text-muted-foreground opacity-40" />
+          <div>
+            <p className="font-semibold text-lg">Service temporairement indisponible</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Impossible de récupérer les statistiques. Veuillez réessayer dans quelques instants.
+            </p>
+          </div>
+          <button
+            onClick={fetchData}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+          >
+            <RefreshCw size={15} />
+            Réessayer
+          </button>
         </div>
       </AppLayout>
     );
@@ -200,9 +148,7 @@ export default function StatistiquesPage() {
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900 truncate">Tableau analytique</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-              {isDemo ? "Données de démonstration (backend indisponible)" : "Données en temps réel depuis la base de données"}
-            </p>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Données en temps réel depuis la base de données</p>
           </div>
           <button
             onClick={fetchData}
@@ -212,20 +158,6 @@ export default function StatistiquesPage() {
             <RefreshCw size={16} />
           </button>
         </div>
-
-        {/* ── Bannière mode démo ─────────────────────────────────────────── */}
-        {isDemo && (
-          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm">
-            <WifiOff size={16} className="shrink-0 text-amber-600" />
-            <span>
-              <strong>Mode démonstration</strong> — Le serveur est temporairement indisponible.
-              Les données affichées sont des exemples.
-            </span>
-            <button onClick={fetchData} className="ml-auto shrink-0 text-xs underline hover:no-underline">
-              Réessayer
-            </button>
-          </div>
-        )}
 
         {/* ── KPI principaux ────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

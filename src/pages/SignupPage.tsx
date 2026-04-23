@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Stethoscope, Users, Mail, Phone, MapPin, Eye, EyeOff, ShieldCheck, Zap, Building2 } from "lucide-react";
+import { Stethoscope, Users, Mail, Phone, MapPin, Eye, EyeOff, ShieldCheck, Zap, Building2 } from "@/components/ui/Icons";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useState } from "react";
 import { useAuth, UserRole } from "@/context/AuthContext";
@@ -81,7 +81,15 @@ const SignupPage = () => {
       toast({ title: "Compte créé avec succès !", description: "Bienvenue !" });
       navigate('/dashboard');
     } catch (error: any) {
-      toast({ title: "Erreur d'inscription", description: error.message || "Une erreur est survenue", variant: "destructive" });
+      if (error.message === 'PENDING_APPROVAL') {
+        toast({
+          title: "Inscription envoyée",
+          description: "Votre compte est en attente de validation par un administrateur. Vous recevrez un accès dès son approbation.",
+        });
+        navigate('/login');
+      } else {
+        toast({ title: "Erreur d'inscription", description: error.message || "Une erreur est survenue", variant: "destructive" });
+      }
     } finally {
       setLoading(false);
     }

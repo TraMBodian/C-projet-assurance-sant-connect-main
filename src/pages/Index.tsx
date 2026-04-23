@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Shield, Users, FileText, Activity, ArrowRight, CheckCircle2, Menu, Phone, Mail, MapPin, Star, TrendingUp, Clock, Award, Stethoscope } from "lucide-react";
+import { Shield, Users, FileText, Activity, ArrowRight, CheckCircle2, Menu, Phone, Mail, MapPin, Star, TrendingUp, Clock, Award, Stethoscope } from "@/components/ui/Icons";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import { motion, useInView } from "framer-motion";

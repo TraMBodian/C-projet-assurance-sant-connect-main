@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Plus, Search, Users, UserCheck, TrendingUp, Pencil, Trash2,
   Calendar, RefreshCw, ShieldCheck, ChevronDown, ChevronUp, ArrowRightLeft, FileText,
-} from "lucide-react";
+} from "@/components/ui/Icons";
 import { MouvementModal } from "@/components/MouvementModal";
 import { PhotoAvatar } from "@/components/PhotoUpload";
 import { motion } from "framer-motion";

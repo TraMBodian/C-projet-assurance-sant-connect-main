@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { Camera, User, Building2 } from "lucide-react";
+import { Camera, User, Building2 } from "@/components/ui/Icons";
 
 interface PhotoUploadProps {
   photo?: string;           // base64 data URL

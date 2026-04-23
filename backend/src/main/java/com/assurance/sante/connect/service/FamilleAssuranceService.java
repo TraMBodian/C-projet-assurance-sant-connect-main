@@ -8,6 +8,8 @@ import com.assurance.sante.connect.repository.FamilleAssuranceRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +19,8 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class FamilleAssuranceService {
+
+    private static final Logger log = LoggerFactory.getLogger(FamilleAssuranceService.class);
 
     private final FamilleAssuranceRepository repository;
     private final AssureRepository            assureRepository;
@@ -141,7 +145,7 @@ public class FamilleAssuranceService {
                 i++;
             }
         } catch (Exception e) {
-            System.err.println("Erreur sync assurés famille " + famille.getId() + ": " + e.getMessage());
+            log.error("Erreur sync assurés famille {}: {}", famille.getId(), e.getMessage());
         }
     }
 

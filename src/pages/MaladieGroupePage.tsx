@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Plus, Search, Building2, Users, TrendingUp, Pencil, Trash2,
   Calendar, RefreshCw, ShieldCheck, ChevronDown, ChevronUp, ArrowRightLeft, FileText,
-} from "lucide-react";
+} from "@/components/ui/Icons";
 import { MouvementModal } from "@/components/MouvementModal";
 import { motion } from "framer-motion";
 import {

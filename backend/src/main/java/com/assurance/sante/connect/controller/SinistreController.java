@@ -12,7 +12,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/sinistres")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000", "http://localhost:8084"})
 public class SinistreController {
 
     private final SinistreService sinistreService;

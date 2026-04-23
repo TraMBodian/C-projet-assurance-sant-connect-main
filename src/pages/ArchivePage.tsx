@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, FileText, Stethoscope, Pill, Loader2, AlertCircle, Printer, Download, Archive } from "lucide-react";
+import { Search, FileText, Stethoscope, Pill, Loader2, AlertCircle, Printer, Download, Archive } from "@/components/ui/Icons";
 import AppLayout from "@/components/AppLayout";
 import { DataService } from "@/services/dataService";
 

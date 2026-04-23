@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Phone, Mail, MapPin, Shield, Edit, Trash2, Loader2, Save, X, Calendar, User, CreditCard, Briefcase, Heart } from "lucide-react";
+import { ArrowLeft, Phone, Mail, MapPin, Shield, Edit, Trash2, Loader2, Save, X, Calendar, User, CreditCard, Briefcase, Heart } from "@/components/ui/Icons";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";

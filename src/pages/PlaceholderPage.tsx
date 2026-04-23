@@ -1,5 +1,5 @@
 import AppLayout from "@/components/AppLayout";
-import { Construction } from "lucide-react";
+import { Construction } from "@/components/ui/Icons";
 
 interface PlaceholderPageProps {
   title: string;

@@ -7,6 +7,7 @@ import com.assurance.sante.connect.dto.UserDto;
 import com.assurance.sante.connect.entity.User;
 import com.assurance.sante.connect.repository.UserRepository;
 import com.assurance.sante.connect.security.JwtTokenProvider;
+import com.assurance.sante.connect.security.LoginRateLimiter;
 import com.assurance.sante.connect.exception.UnauthorizedException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,24 +21,36 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final LoginRateLimiter rateLimiter;
 
     public AuthResponse login(LoginRequest request) {
-        Optional<User> user = userRepository.findByEmail(request.getEmail());
-        
-        if (user.isEmpty() || !passwordEncoder.matches(request.getPassword(), user.get().getPassword())) {
-            throw new UnauthorizedException("Invalid email or password");
+        rateLimiter.checkBlocked(request.getEmail());
+
+        Optional<User> userOpt = userRepository.findByEmail(request.getEmail());
+
+        if (userOpt.isEmpty() || !passwordEncoder.matches(request.getPassword(), userOpt.get().getPassword())) {
+            rateLimiter.checkAndRegisterFailure(request.getEmail());
+            throw new UnauthorizedException("Email ou mot de passe incorrect");
         }
 
-        String token = jwtTokenProvider.generateToken(user.get().getEmail());
+        User user = userOpt.get();
+
+        if (user.getStatus() == User.UserStatus.PENDING) {
+            throw new UnauthorizedException("Votre compte est en attente de validation par un administrateur");
+        }
+
+        rateLimiter.resetAttempts(request.getEmail());
+
+        String token = jwtTokenProvider.generateToken(user.getEmail());
         return AuthResponse.builder()
-            .user(UserDto.fromEntity(user.get()))
+            .user(UserDto.fromEntity(user))
             .token(token)
             .build();
     }
 
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("Email already exists");
+            throw new IllegalArgumentException("Cet email est déjà utilisé");
         }
 
         User user = User.builder()
@@ -52,11 +65,11 @@ public class AuthService {
             .build();
 
         user = userRepository.save(user);
-        String token = jwtTokenProvider.generateToken(user.getEmail());
 
+        // Pas de token : le compte doit être validé par un admin avant toute connexion
         return AuthResponse.builder()
             .user(UserDto.fromEntity(user))
-            .token(token)
+            .token(null)
             .build();
     }
 

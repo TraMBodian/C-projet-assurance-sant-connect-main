@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Send, Menu, CheckCircle2 } from "lucide-react";
+import { Send, Menu, CheckCircle2 } from "@/components/ui/Icons";
 
 export default function ContactPage() {
   const navigate = useNavigate();

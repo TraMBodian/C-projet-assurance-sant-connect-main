@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Search, MapPin, Phone, Mail, Loader2, AlertCircle, Building2, Pencil, Trash2, Hash } from "lucide-react";
+import { Plus, Search, MapPin, Phone, Mail, Loader2, AlertCircle, Building2, Pencil, Trash2, Hash } from "@/components/ui/Icons";
 import { useNavigate } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { DataService } from "@/services/dataService";

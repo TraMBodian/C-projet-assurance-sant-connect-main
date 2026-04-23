@@ -1,13 +1,17 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Search, Pill, FileText, Loader2, AlertCircle, Download, Eye } from "lucide-react";
+import { Plus, Search, Pill, FileText, Loader2, AlertCircle, Download, Eye, Phone, MapPin } from "@/components/ui/Icons";
 import { useNavigate } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { DataService } from "@/services/dataService";
+import { useAuth } from "@/context/AuthContext";
 
 export default function PrescriptionsPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isClient = user?.role === "client";
+
   const [search, setSearch] = useState("");
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -199,8 +203,35 @@ export default function PrescriptionsPage() {
   };
 
   return (
-    <AppLayout title="Gestion des Ordonnances">
+    <AppLayout title={isClient ? "Mes Prescriptions" : "Gestion des Ordonnances"}>
       <div className="space-y-4 sm:space-y-5">
+
+        {/* ── Bandeau info client ─────────────────────────────────────── */}
+        {isClient && (
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-center bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800">
+            <Pill size={16} className="text-blue-600 shrink-0 hidden sm:block" />
+            <p className="flex-1">
+              Vos ordonnances sont établies par votre médecin lors d'une consultation.
+              Pour une nouvelle prescription, prenez rendez-vous avec un prestataire.
+            </p>
+            <div className="flex gap-2 shrink-0">
+              <Button size="sm" variant="outline"
+                className="h-8 text-xs border-blue-300 text-blue-700 hover:bg-blue-100 gap-1.5"
+                onClick={() => navigate("/contact")}
+              >
+                <Phone size={13} />
+                Contacter un médecin
+              </Button>
+              <Button size="sm" variant="outline"
+                className="h-8 text-xs border-blue-300 text-blue-700 hover:bg-blue-100 gap-1.5"
+                onClick={() => window.open("https://maps.google.com/?q=pharmacie+Dakar+Sénégal", "_blank")}
+              >
+                <MapPin size={13} />
+                Pharmacie proche
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* ── Compteurs ──────────────────────────────────────────────── */}
         {!loading && !error && (
@@ -236,14 +267,26 @@ export default function PrescriptionsPage() {
               />
             </div>
           </div>
-          <Button
-            className="whitespace-nowrap shrink-0"
-            onClick={() => navigate("/prescriptions/new")}
-          >
-            <Plus size={15} className="mr-1.5" />
-            <span className="hidden sm:inline">Nouvelle ordonnance</span>
-            <span className="sm:hidden">Nouvelle</span>
-          </Button>
+          {isClient ? (
+            <Button
+              variant="outline"
+              className="whitespace-nowrap shrink-0 border-blue-300 text-blue-700 hover:bg-blue-50 gap-1.5"
+              onClick={() => navigate("/contact")}
+              title="Les ordonnances sont créées par votre médecin — contactez votre prestataire"
+            >
+              <Phone size={15} />
+              <span>Prendre rendez-vous</span>
+            </Button>
+          ) : (
+            <Button
+              className="whitespace-nowrap shrink-0"
+              onClick={() => navigate("/prescriptions/new")}
+            >
+              <Plus size={15} className="mr-1.5" />
+              <span className="hidden sm:inline">Nouvelle ordonnance</span>
+              <span className="sm:hidden">Nouvelle</span>
+            </Button>
+          )}
         </div>
 
         {/* ── États ──────────────────────────────────────────────────── */}

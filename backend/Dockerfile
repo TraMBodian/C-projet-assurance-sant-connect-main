@@ -16,11 +16,11 @@ WORKDIR /app
 
 COPY --from=build /app/target/*.jar app.jar
 
-# PORT env var is set by Railway/Render automatically
 EXPOSE 3001
 
-ENTRYPOINT ["sh", "-c", "java -jar app.jar \
-  --server.port=${PORT:-3001} \
-  --spring.profiles.active=h2 \
-  --app.jwtSecret=${JWT_SECRET:-We7/Ty05ZUgeNXizXvsYVB2wNn1jiYR723q2Ho0EubelOwQhNSKtMizs/+29jNl1NGazGPrP2/WngrgDq1OuRw==} \
-  --app.jwtExpirationMs=86400000"]
+ENTRYPOINT ["sh", "-c", "java \
+  -Dfile.encoding=UTF-8 \
+  -Dstdout.encoding=UTF-8 \
+  -Dspring.profiles.active=${SPRING_PROFILE:-postgres} \
+  -jar app.jar \
+  --server.port=${PORT:-3001}"]

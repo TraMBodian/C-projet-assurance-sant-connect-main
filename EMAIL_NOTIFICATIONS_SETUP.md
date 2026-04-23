@@ -45,7 +45,23 @@ src/App.tsx                                 # ✏️ Ajout route /registrations
 ### Documentation
 ├── EMAIL_SETUP_GUIDE.md                    # Guide complet de configuration
 ├── AUTHENTICATION_GUIDE.md                 # Guide d'authentification
-├── .env.example                            # Variables d'environnement
+├── 
+- 
++ # Profil Spring actif : postgres | mysql | h2
++ SPRING_PROFILE=postgres
++ 
++ # Base de données
++ DB_URL=jdbc:postgresql://postgres-db:5432/assurance_sante_db
++ DB_USER=assurance_app
++ DB_PASSWORD=MotDePasseFort2026!
++ 
++ # JWT
++ JWT_SECRET=remplacer_par_une_chaine_base64_de_64_caracteres_minimum
++ JWT_EXPIRATION_MS=86400000
++ 
++ # Email (optionnel en développement)
++ MAIL_USERNAME=
++ MAIL_PASSWORD=.example                            # Variables d'environnement
 └── README.md                               # Ce fichier
 ```
 

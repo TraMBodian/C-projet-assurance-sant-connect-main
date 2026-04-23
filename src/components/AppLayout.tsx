@@ -2,7 +2,7 @@ import { ReactNode, useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import AppSidebar from "./AppSidebar";
 import { UserMenu } from "./UserMenu";
-import { Search, User, Stethoscope, LogOut, Clock } from "lucide-react";
+import { Search, User, Stethoscope, LogOut, Clock } from "@/components/ui/Icons";
 import { NotificationSystem } from "@/components/NotificationSystem";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";

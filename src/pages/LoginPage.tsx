@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, ShieldCheck, Zap, Building2 } from "lucide-react";
+import { Eye, EyeOff, ShieldCheck, Zap, Building2 } from "@/components/ui/Icons";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
@@ -62,33 +62,11 @@ const LoginPage = () => {
 
   const handleResetPassword = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!resetEmail) {
-      toast({ title: "Erreur", description: "Veuillez entrer votre email", variant: "destructive" });
-      return;
-    }
-    if (newPassword !== confirmNewPassword) {
-      toast({ title: "Erreur", description: "Les mots de passe ne correspondent pas", variant: "destructive" });
-      return;
-    }
-    if (newPassword.length < 6) {
-      toast({ title: "Erreur", description: "Le mot de passe doit contenir au moins 6 caractères", variant: "destructive" });
-      return;
-    }
-    const savedUsers: any[] = JSON.parse(localStorage.getItem('registered_users') || '[]');
-    const userIndex = savedUsers.findIndex((u: any) => u.email === resetEmail);
-    if (userIndex === -1) {
-      toast({ title: "Non disponible", description: "La réinitialisation en ligne n'est pas encore disponible. Contactez l'administrateur.", variant: "destructive" });
-      return;
-    }
-    savedUsers[userIndex].password = newPassword;
-    localStorage.setItem('registered_users', JSON.stringify(savedUsers));
-    toast({ title: "Succès", description: "Mot de passe modifié. Vous pouvez vous connecter." });
-    setShowReset(false);
-    setEmail(resetEmail);
-    setPassword("");
-    setResetEmail("");
-    setNewPassword("");
-    setConfirmNewPassword("");
+    toast({
+      title: "Réinitialisation non disponible",
+      description: "Veuillez contacter l'administrateur pour réinitialiser votre mot de passe.",
+      variant: "destructive",
+    });
   };
 
   return (

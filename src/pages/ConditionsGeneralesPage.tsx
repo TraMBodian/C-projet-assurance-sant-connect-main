@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Download, FileText, Printer } from "lucide-react";
+import { Download, FileText, Printer } from "@/components/ui/Icons";
 import ClaudeChat from "@/components/ClaudeChat";
 import { chatConditionsGenerales, ClaudeMessage } from "@/services/claudeService";
 

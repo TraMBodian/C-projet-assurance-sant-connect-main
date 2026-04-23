@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Plus, X, RefreshCw, ChevronDown, ChevronUp, User, Users, Globe } from "lucide-react";
+import { ArrowLeft, Plus, X, RefreshCw, ChevronDown, ChevronUp, User, Users, Globe } from "@/components/ui/Icons";
 import { toast } from "sonner";
 import { DataService } from "@/services/dataService";
 import { getTarifs, type TarifSettings } from "@/services/tarifService";

@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { X, UserPlus, UserMinus, Calculator, Check, Plus, Trash2 } from "lucide-react";
+import { X, UserPlus, UserMinus, Calculator, Check, Plus, Trash2 } from "@/components/ui/Icons";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";

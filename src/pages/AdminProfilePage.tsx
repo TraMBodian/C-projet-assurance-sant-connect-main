@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { User, Mail, Phone, MapPin, Lock, Camera, Settings } from "lucide-react";
+import { User, Mail, Phone, MapPin, Lock, Camera, Settings } from "@/components/ui/Icons";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { getTarifs, saveTarifs, TARIF_DEFAULTS, type TarifSettings } from "@/services/tarifService";

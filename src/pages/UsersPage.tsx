@@ -6,7 +6,7 @@ import {
   Users, Stethoscope, Search, Mail, Building2, ShieldCheck,
   Trash2, CheckCircle, Clock, XCircle, Ban, Phone, MapPin,
   UserCheck, UserX, RefreshCw, AlertCircle,
-} from "lucide-react";
+} from "@/components/ui/Icons";
 import AppLayout from "@/components/AppLayout";
 import { apiClient } from "@/services/apiClient";
 import { useToast } from "@/hooks/use-toast";

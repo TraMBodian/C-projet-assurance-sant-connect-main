@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { MessageCircle, X, Send, Loader2, Bot, User, ChevronDown } from "lucide-react";
+import { MessageCircle, X, Send, Loader2, Bot, User, ChevronDown } from "@/components/ui/Icons";
 import { Button } from "@/components/ui/button";
 import { ClaudeMessage } from "@/services/claudeService";
 

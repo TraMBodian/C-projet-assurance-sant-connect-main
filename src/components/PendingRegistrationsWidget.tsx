@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, ChevronRight } from "lucide-react";
+import { AlertCircle, ChevronRight } from "@/components/ui/Icons";
 import { useNavigate } from "react-router-dom";
 
 export const PendingRegistrationsWidget = () => {
