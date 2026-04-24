@@ -17,19 +17,6 @@ function fmt(d?: string | null) {
   try { return new Date(d).toLocaleDateString("fr-FR"); } catch { return "—"; }
 }
 
-// ─── Puce ─────────────────────────────────────────────────────────────────────
-function Chip() {
-  return (
-    <svg width="40" height="30" viewBox="0 0 50 38" fill="none">
-      <rect x="1" y="1" width="48" height="36" rx="5" fill="#D4A017" stroke="#B8860B" strokeWidth="1.5"/>
-      <rect x="16" y="1" width="18" height="36" fill="#C49A10"/>
-      <rect x="1"  y="12" width="48" height="14" fill="#C49A10"/>
-      <rect x="16" y="12" width="18" height="14" fill="#B8860B"/>
-      <rect x="18" y="14" width="14" height="10" rx="1" fill="#D4A017" stroke="#B8860B" strokeWidth="0.8"/>
-    </svg>
-  );
-}
-
 // ─── Photo placeholder ────────────────────────────────────────────────────────
 function PhotoBox({ src }: { src?: string }) {
   return (
@@ -104,16 +91,13 @@ function InsuranceCard({ a }: { a: any }) {
         {/* Gauche : puce + infos */}
         <div className="flex-1 min-w-0 flex flex-col gap-2.5">
 
-          {/* Puce + nom */}
-          <div className="flex items-center gap-2.5">
-            <Chip />
-            <div className="min-w-0">
-              <p className="text-[9px] text-gray-400 uppercase font-medium">Titulaire</p>
-              <p className="font-black text-gray-900 uppercase text-sm leading-tight truncate">
-                {a.nom ?? "—"}
-              </p>
-              <p className="font-semibold text-gray-700 text-xs truncate">{a.prenom ?? ""}</p>
-            </div>
+          {/* Nom titulaire */}
+          <div className="min-w-0">
+            <p className="text-[9px] text-gray-400 uppercase font-medium">Titulaire</p>
+            <p className="font-black text-gray-900 uppercase text-sm leading-tight truncate">
+              {a.nom ?? "—"}
+            </p>
+            <p className="font-semibold text-gray-700 text-xs truncate">{a.prenom ?? ""}</p>
           </div>
 
           {/* Champs */}
