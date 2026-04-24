@@ -51,7 +51,7 @@ const LoginPage = () => {
       if (msg === "Failed to fetch" || msg.includes("NetworkError") || msg.includes("Délai")) {
         toast({
           title: "Serveur inaccessible",
-          description: "Impossible de contacter le serveur. Vérifiez que le backend est démarré (port 3001).",
+          description: "Impossible de contacter le serveur. Veuillez réessayer dans quelques instants.",
           variant: "destructive",
         });
         return;
