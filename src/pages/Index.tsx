@@ -421,10 +421,10 @@ const Index = () => {
           {/* Registration Cards */}
           <div className="grid md:grid-cols-2 gap-8 mb-12 max-w-3xl mx-auto">
             {/* Prestataire Card */}
-            <Card className="relative overflow-hidden hover:shadow-xl transition-all duration-300 border-2 hover:border-blue-500">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-100 rounded-bl-full opacity-50"></div>
+            <Card className="relative overflow-hidden hover:shadow-xl transition-all duration-300 border-2 hover:border-brand">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-brand/10 rounded-bl-full opacity-50"></div>
               <div className="relative p-8">
-                <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mb-4">
+                <div className="w-12 h-12 bg-brand rounded-xl flex items-center justify-center mb-4">
                   <Stethoscope className="w-6 h-6 text-white" />
                 </div>
                 <h3 className="text-2xl font-bold mb-2 text-gray-900">Prestataire</h3>
@@ -443,7 +443,7 @@ const Index = () => {
                     <span>Suivi des remboursements</span>
                   </li>
                 </ul>
-                <Button onClick={() => navigate('/signup?role=prestataire')} className="w-full bg-blue-600 hover:bg-blue-700">
+                <Button onClick={() => navigate('/signup?role=prestataire')} className="w-full bg-brand hover:bg-brand-dark">
                   Créer un compte prestataire
                 </Button>
               </div>

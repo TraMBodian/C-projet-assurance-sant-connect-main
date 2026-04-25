@@ -91,53 +91,47 @@ const LoginPage = () => {
   return (
     <div className="min-h-screen flex">
 
-      {/* ── Panneau gauche : branding ────────────────────────────── */}
-      <div className="hidden lg:flex lg:w-1/2 relative flex-col items-center justify-center p-12 overflow-hidden bg-brand">
-        {/* Cercles décoratifs */}
-        <div className="absolute -top-24 -left-24 w-80 h-80 bg-white/10 rounded-full blur-2xl" />
-        <div className="absolute -bottom-24 -right-16 w-96 h-96 bg-purple-400/20 rounded-full blur-3xl" />
-        <div className="absolute top-1/3 right-0 w-48 h-48 bg-blue-300/10 rounded-full blur-2xl" />
-
+      {/* ── Panneau gauche : branding blanc ─────────────────────── */}
+      <div className="hidden lg:flex lg:w-1/2 relative flex-col items-center justify-center p-12 overflow-hidden bg-white border-r border-gray-100">
         {/* Contenu */}
-        <div className="relative z-10 flex flex-col items-center text-center text-white">
-          <img src="/logo1.png" alt="Logo" className="w-24 h-24 object-contain drop-shadow-2xl mb-6" />
-          <h1 className="text-3xl font-extrabold tracking-tight mb-3">Papy Services Assurances</h1>
-          <p className="text-blue-100 text-base max-w-xs leading-relaxed">
+        <div className="relative z-10 flex flex-col items-center text-center">
+          <img src="/logo1.png" alt="Logo" className="w-56 h-56 object-contain mb-6 drop-shadow-sm" />
+          <h1 className="text-3xl font-extrabold tracking-tight mb-3 text-brand">Papy Services Assurances</h1>
+          <p className="text-gray-500 text-base max-w-xs leading-relaxed">
             La plateforme de gestion d'assurance santé nouvelle génération
           </p>
 
           {/* Badges de confiance */}
           <div className="mt-10 flex flex-col gap-3 w-full max-w-xs">
             {[
-              { icon: <ShieldCheck size={18} className="text-blue-200 shrink-0" />, text: "Données sécurisées & chiffrées" },
-              { icon: <Zap size={18} className="text-blue-200 shrink-0" />, text: "Accès instantané à vos polices" },
-              { icon: <Building2 size={18} className="text-blue-200 shrink-0" />, text: "Réseau de prestataires certifiés" },
+              { icon: <ShieldCheck size={18} className="text-brand shrink-0" />, text: "Données sécurisées & chiffrées" },
+              { icon: <Zap size={18} className="text-brand shrink-0" />, text: "Accès instantané à vos polices" },
+              { icon: <Building2 size={18} className="text-brand shrink-0" />, text: "Réseau de prestataires certifiés" },
             ].map((item) => (
-              <div key={item.text} className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 text-sm">
+              <div key={item.text} className="flex items-center gap-3 bg-brand/5 border border-brand/10 rounded-xl px-4 py-3 text-sm text-gray-700">
                 {item.icon}
-                <span className="text-blue-50">{item.text}</span>
+                <span>{item.text}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* ── Panneau droit : formulaire ──────────────────────────── */}
-      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-6 sm:p-10 bg-gray-50 relative overflow-hidden">
+      {/* ── Panneau droit : bleu du logo ────────────────────────── */}
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-6 sm:p-10 bg-brand relative overflow-hidden">
 
-        {/* Fond mobile : dégradé subtil */}
-        <div className="absolute inset-0 lg:hidden bg-gradient-to-b from-blue-50 to-gray-50 pointer-events-none" />
+        {/* Cercles décoratifs */}
+        <div className="absolute -top-24 -right-24 w-80 h-80 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-16 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none" />
 
         {/* Logo visible uniquement sur mobile */}
         <div className="lg:hidden flex flex-col items-center mb-8 relative z-10">
-          <div className="w-16 h-16 rounded-2xl bg-brand flex items-center justify-center shadow-lg mb-3">
-            <img src="/logo1.png" alt="Logo" className="w-10 h-10 object-contain" />
-          </div>
-          <p className="font-bold text-gray-800 text-lg tracking-tight">Papy Services Assurances</p>
+          <img src="/logo1.png" alt="Logo" className="w-20 h-20 object-contain mb-3 drop-shadow" />
+          <p className="font-bold text-white text-lg tracking-tight">Papy Services Assurances</p>
         </div>
 
         {/* Carte formulaire */}
-        <div className="relative z-10 w-full max-w-sm sm:max-w-md bg-white rounded-2xl shadow-xl p-7 sm:p-10 border border-gray-100">
+        <div className="relative z-10 w-full max-w-sm sm:max-w-md bg-white rounded-2xl shadow-2xl p-7 sm:p-10 border border-white/20">
 
           {/* En-tête */}
           <div className="mb-7">
@@ -300,7 +294,7 @@ const LoginPage = () => {
         </div>
 
         {/* Pied de page */}
-        <p className="relative z-10 mt-6 text-xs text-gray-400 text-center">
+        <p className="relative z-10 mt-6 text-xs text-white/50 text-center">
           © {new Date().getFullYear()} Papy Services Assurances. Tous droits réservés.
         </p>
       </div>
