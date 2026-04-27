@@ -14,6 +14,7 @@ interface VerifyData {
   dateFin:  string;
   garantie: string;
   type:     string;
+  photo?:   string;
   message?: string;
 }
 
@@ -36,7 +37,10 @@ export default function VerifyPage() {
   useEffect(() => {
     if (!numero) { setError(true); setLoading(false); return; }
     fetch(`${API}/public/verify/${encodeURIComponent(numero)}`)
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok && r.status !== 404) throw new Error("server");
+        return r.json();
+      })
       .then(setData)
       .catch(() => setError(true))
       .finally(() => setLoading(false));

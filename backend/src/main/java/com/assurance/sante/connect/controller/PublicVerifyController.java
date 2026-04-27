@@ -10,6 +10,7 @@ import java.time.LocalDate;
 import java.util.Map;
 import java.util.Optional;
 
+@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/public")
 @RequiredArgsConstructor
