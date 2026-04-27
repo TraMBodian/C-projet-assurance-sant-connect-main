@@ -8,4 +8,5 @@ import java.util.Optional;
 @Repository
 public interface PrestataireRepository extends JpaRepository<Prestataire, Long> {
     Optional<Prestataire> findByNumero(String numero);
+    boolean existsByNumero(String numero);
 }

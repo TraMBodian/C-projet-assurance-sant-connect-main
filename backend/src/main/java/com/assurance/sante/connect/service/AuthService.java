@@ -4,7 +4,9 @@ import com.assurance.sante.connect.dto.LoginRequest;
 import com.assurance.sante.connect.dto.RegisterRequest;
 import com.assurance.sante.connect.dto.AuthResponse;
 import com.assurance.sante.connect.dto.UserDto;
+import com.assurance.sante.connect.entity.Prestataire;
 import com.assurance.sante.connect.entity.User;
+import com.assurance.sante.connect.repository.PrestataireRepository;
 import com.assurance.sante.connect.repository.UserRepository;
 import com.assurance.sante.connect.security.JwtTokenProvider;
 import com.assurance.sante.connect.security.LoginRateLimiter;
@@ -19,6 +21,7 @@ import java.util.Optional;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final PrestataireRepository prestataireRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final LoginRateLimiter rateLimiter;
@@ -67,6 +70,26 @@ public class AuthService {
             .build();
 
         user = userRepository.save(user);
+
+        // Si le rôle est PRESTATAIRE, créer automatiquement l'entrée dans la table prestataires
+        if (User.UserRole.PRESTATAIRE.equals(user.getRole())) {
+            String nom = (request.getOrganization() != null && !request.getOrganization().isBlank())
+                ? request.getOrganization()
+                : request.getFullName();
+            String numero = "PST-" + user.getId();
+            if (!prestataireRepository.existsByNumero(numero)) {
+                Prestataire prestataire = Prestataire.builder()
+                    .numero(numero)
+                    .nom(nom)
+                    .type(Prestataire.TypePrestataire.AUTRE)
+                    .telephone(request.getTelephone())
+                    .email(request.getEmail())
+                    .adresse(request.getAdresse())
+                    .statut(Prestataire.StatutPrestataire.INACTIF)
+                    .build();
+                prestataireRepository.save(prestataire);
+            }
+        }
 
         // Pas de token : le compte doit être validé par un admin avant toute connexion
         return AuthResponse.builder()
