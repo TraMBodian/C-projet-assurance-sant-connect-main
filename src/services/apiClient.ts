@@ -3,6 +3,9 @@ export class ApiClient {
   private baseURL: string;
   private timeout: number;
 
+  // Singleton pour éviter plusieurs appels refresh simultanés
+  private refreshPromise: Promise<string> | null = null;
+
   constructor() {
     this.baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
     this.timeout = parseInt(import.meta.env.VITE_API_TIMEOUT || '10000');
@@ -32,12 +35,26 @@ export class ApiClient {
         const errorData = await response.json().catch(() => ({ message: 'Erreur réseau' }));
         const msg = errorData.message || errorData.data || `HTTP ${response.status}`;
 
-        // 401 sur /auth/login → mauvaises credentials, on propage le message du serveur
-        // 401 sur toute autre route → session expirée
-        if (response.status === 401 && !endpoint.includes('/auth/login')) {
-          sessionStorage.removeItem('auth_token');
-          window.dispatchEvent(new CustomEvent('auth:expired'));
-          throw new Error('Session expirée. Veuillez vous reconnecter.');
+        if (response.status === 401) {
+          // Endpoints d'auth → pas de retry, on propage le message
+          if (endpoint.includes('/auth/')) {
+            throw new Error(msg);
+          }
+
+          // Autre endpoint → tenter un refresh silencieux
+          try {
+            const newToken = await this.tryRefresh();
+            // Retry la requête originale avec le nouveau token
+            return this.request<T>(endpoint, {
+              ...options,
+              headers: { ...options.headers, Authorization: `Bearer ${newToken}` },
+            });
+          } catch {
+            sessionStorage.removeItem('auth_token');
+            sessionStorage.removeItem('refresh_token');
+            window.dispatchEvent(new CustomEvent('auth:expired'));
+            throw new Error('Session expirée. Veuillez vous reconnecter.');
+          }
         }
 
         throw new Error(msg);
@@ -60,16 +77,39 @@ export class ApiClient {
     }
   }
 
+  private async tryRefresh(): Promise<string> {
+    // Plusieurs requêtes qui échouent en 401 simultanément ne déclenchent qu'un seul refresh
+    if (this.refreshPromise) return this.refreshPromise;
+
+    this.refreshPromise = (async () => {
+      const refreshToken = sessionStorage.getItem('refresh_token');
+      if (!refreshToken) throw new Error('Pas de refresh token');
+
+      const res = await this.request<{ token: string; refreshToken: string }>(
+        '/auth/refresh',
+        { method: 'POST', body: JSON.stringify({ refreshToken }) }
+      );
+
+      sessionStorage.setItem('auth_token', res.token);
+      if (res.refreshToken) sessionStorage.setItem('refresh_token', res.refreshToken);
+      return res.token;
+    })().finally(() => {
+      this.refreshPromise = null;
+    });
+
+    return this.refreshPromise;
+  }
+
   // Auth
   async login(credentials: { email: string; password: string }) {
-    return this.request<{ user: any; token: string }>('/auth/login', {
+    return this.request<{ user: any; token: string; refreshToken: string }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
   }
 
   async register(userData: { email: string; password: string; fullName: string; role: string; organization?: string; telephone?: string; adresse?: string }) {
-    return this.request<{ user: any; token: string }>('/auth/register', {
+    return this.request<{ user: any; token: string; refreshToken: string | null }>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(userData),
     });

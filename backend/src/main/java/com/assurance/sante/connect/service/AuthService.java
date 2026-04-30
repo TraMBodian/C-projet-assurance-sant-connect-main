@@ -5,6 +5,7 @@ import com.assurance.sante.connect.dto.RegisterRequest;
 import com.assurance.sante.connect.dto.AuthResponse;
 import com.assurance.sante.connect.dto.UserDto;
 import com.assurance.sante.connect.entity.Prestataire;
+import com.assurance.sante.connect.entity.RefreshToken;
 import com.assurance.sante.connect.entity.User;
 import com.assurance.sante.connect.repository.PrestataireRepository;
 import com.assurance.sante.connect.repository.UserRepository;
@@ -26,6 +27,7 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final LoginRateLimiter rateLimiter;
     private final ActiveSessionService activeSessionService;
+    private final RefreshTokenService refreshTokenService;
 
     public AuthResponse login(LoginRequest request) {
         rateLimiter.checkBlocked(request.getEmail());
@@ -46,11 +48,33 @@ public class AuthService {
         rateLimiter.resetAttempts(request.getEmail());
         activeSessionService.login(user);
 
-        String token = jwtTokenProvider.generateToken(user.getEmail());
+        String accessToken  = jwtTokenProvider.generateToken(user.getEmail());
+        RefreshToken refresh = refreshTokenService.createRefreshToken(user);
+
         return AuthResponse.builder()
-            .user(UserDto.fromEntity(user))
-            .token(token)
-            .build();
+                .user(UserDto.fromEntity(user))
+                .token(accessToken)
+                .refreshToken(refresh.getToken())
+                .build();
+    }
+
+    public AuthResponse refreshAccessToken(String refreshTokenValue) {
+        RefreshToken refreshToken = refreshTokenService.validateRefreshToken(refreshTokenValue);
+        User user = refreshToken.getUser();
+
+        String newAccessToken = jwtTokenProvider.generateToken(user.getEmail());
+
+        return AuthResponse.builder()
+                .user(UserDto.fromEntity(user))
+                .token(newAccessToken)
+                .refreshToken(refreshTokenValue)
+                .build();
+    }
+
+    public void logout(String email) {
+        userRepository.findByEmail(email)
+                .ifPresent(refreshTokenService::revokeAllUserTokens);
+        activeSessionService.logout(email);
     }
 
     public AuthResponse register(RegisterRequest request) {
@@ -59,50 +83,49 @@ public class AuthService {
         }
 
         User user = User.builder()
-            .email(request.getEmail())
-            .password(passwordEncoder.encode(request.getPassword()))
-            .fullName(request.getFullName())
-            .role(User.UserRole.valueOf(request.getRole().toUpperCase()))
-            .organization(request.getOrganization())
-            .telephone(request.getTelephone())
-            .adresse(request.getAdresse())
-            .status(User.UserStatus.PENDING)
-            .build();
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .fullName(request.getFullName())
+                .role(User.UserRole.valueOf(request.getRole().toUpperCase()))
+                .organization(request.getOrganization())
+                .telephone(request.getTelephone())
+                .adresse(request.getAdresse())
+                .status(User.UserStatus.PENDING)
+                .build();
 
         user = userRepository.save(user);
 
         // Si le rôle est PRESTATAIRE, créer automatiquement l'entrée dans la table prestataires
         if (User.UserRole.PRESTATAIRE.equals(user.getRole())) {
             String nom = (request.getOrganization() != null && !request.getOrganization().isBlank())
-                ? request.getOrganization()
-                : request.getFullName();
+                    ? request.getOrganization()
+                    : request.getFullName();
             String numero = "PST-" + user.getId();
             if (!prestataireRepository.existsByNumero(numero)) {
                 Prestataire prestataire = Prestataire.builder()
-                    .numero(numero)
-                    .nom(nom)
-                    .type(Prestataire.TypePrestataire.AUTRE)
-                    .telephone(request.getTelephone())
-                    .email(request.getEmail())
-                    .adresse(request.getAdresse())
-                    .statut(Prestataire.StatutPrestataire.INACTIF)
-                    .build();
+                        .numero(numero)
+                        .nom(nom)
+                        .type(Prestataire.TypePrestataire.AUTRE)
+                        .telephone(request.getTelephone())
+                        .email(request.getEmail())
+                        .adresse(request.getAdresse())
+                        .statut(Prestataire.StatutPrestataire.INACTIF)
+                        .build();
                 prestataireRepository.save(prestataire);
             }
         }
 
         // Pas de token : le compte doit être validé par un admin avant toute connexion
         return AuthResponse.builder()
-            .user(UserDto.fromEntity(user))
-            .token(null)
-            .build();
+                .user(UserDto.fromEntity(user))
+                .token(null)
+                .refreshToken(null)
+                .build();
     }
 
     public UserDto getCurrentUser(String email) {
-        Optional<User> user = userRepository.findByEmail(email);
-        if (user.isEmpty()) {
-            throw new UnauthorizedException("User not found");
-        }
-        return UserDto.fromEntity(user.get());
+        return userRepository.findByEmail(email)
+                .map(UserDto::fromEntity)
+                .orElseThrow(() -> new UnauthorizedException("Utilisateur introuvable"));
     }
 }

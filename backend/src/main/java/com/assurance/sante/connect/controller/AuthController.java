@@ -25,11 +25,11 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AuthController {
 
-    private final AuthService         authService;
+    private final AuthService          authService;
     private final ActiveSessionService activeSessionService;
-    private final OtpService          otpService;
-    private final UserRepository      userRepository;
-    private final UserService         userService;
+    private final OtpService           otpService;
+    private final UserRepository       userRepository;
+    private final UserService          userService;
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
@@ -45,20 +45,29 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserDto>> getCurrentUser(Authentication authentication) {
-        if (authentication instanceof JwtAuthenticationToken) {
-            String email = ((JwtAuthenticationToken) authentication).getEmail();
-            UserDto userDto = authService.getCurrentUser(email);
+        if (authentication instanceof JwtAuthenticationToken jwt) {
+            UserDto userDto = authService.getCurrentUser(jwt.getEmail());
             return ResponseEntity.ok(ApiResponse.success(userDto));
         }
-        return ResponseEntity.badRequest().body(ApiResponse.error("Authentication failed"));
+        return ResponseEntity.badRequest().body(ApiResponse.error("Authentification requise"));
     }
 
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<String>> logout(Authentication authentication) {
         if (authentication instanceof JwtAuthenticationToken jwt) {
-            activeSessionService.logout(jwt.getEmail());
+            authService.logout(jwt.getEmail());
         }
-        return ResponseEntity.ok(ApiResponse.success("Logout successful"));
+        return ResponseEntity.ok(ApiResponse.success("Déconnexion réussie"));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<ApiResponse<AuthResponse>> refresh(@RequestBody Map<String, String> body) {
+        String refreshToken = body.get("refreshToken");
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Refresh token requis"));
+        }
+        AuthResponse response = authService.refreshAccessToken(refreshToken);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     /** Étape 1 : envoyer l'OTP par email */

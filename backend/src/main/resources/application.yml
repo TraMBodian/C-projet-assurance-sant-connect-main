@@ -95,4 +95,5 @@ management:
 
 app:
   jwtSecret: ${JWT_SECRET:k3untQX7VPALDigJxFzzKchYmxbdnJhIyCfVKzMxDB2FauysInXc100PUl9zSfmDYcYeg5QOoB9Btm2iNY4P4A==}
-  jwtExpirationMs: ${JWT_EXPIRATION_MS:86400000}
+  jwtExpirationMs: ${JWT_EXPIRATION_MS:900000}
+  jwtRefreshExpirationMs: ${JWT_REFRESH_EXPIRATION_MS:604800000}

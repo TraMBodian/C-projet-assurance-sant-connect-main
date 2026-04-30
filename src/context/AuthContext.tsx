@@ -29,14 +29,32 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const PHOTO_KEY = (id: string) => `user_photo_${id}`;
 
+function clearSession() {
+  sessionStorage.removeItem('auth_token');
+  sessionStorage.removeItem('refresh_token');
+}
+
+function buildAuthUser(userData: any, photo?: string | null): AuthUser {
+  const uid = String(userData.id);
+  return {
+    id: uid,
+    email: userData.email,
+    role: userData.role?.toLowerCase() as UserRole,
+    full_name: userData.fullName,
+    fullName: userData.fullName,
+    organization: userData.organization,
+    photo: photo ?? localStorage.getItem(PHOTO_KEY(uid)) ?? undefined,
+  };
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const handler = () => {
+      clearSession();
       setUser(null);
-      sessionStorage.removeItem('auth_token');
     };
     window.addEventListener('auth:expired', handler);
     return () => window.removeEventListener('auth:expired', handler);
@@ -49,18 +67,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!token) return;
 
         const userData = await apiClient.getCurrentUser();
-        const uid = String(userData.id);
-        setUser({
-          id: uid,
-          email: userData.email,
-          role: userData.role?.toLowerCase() as UserRole,
-          full_name: userData.fullName,
-          fullName: userData.fullName,
-          organization: userData.organization,
-          photo: localStorage.getItem(PHOTO_KEY(uid)) ?? undefined,
-        });
+        setUser(buildAuthUser(userData));
       } catch {
-        sessionStorage.removeItem('auth_token');
+        clearSession();
       } finally {
         setLoading(false);
       }
@@ -71,17 +80,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     const response = await apiClient.login({ email, password });
     sessionStorage.setItem('auth_token', response.token);
-    const uid = String(response.user.id);
-    const authUser: AuthUser = {
-      id: uid,
-      email: response.user.email,
-      role: response.user.role?.toLowerCase() as UserRole,
-      full_name: response.user.fullName,
-      fullName: response.user.fullName,
-      organization: response.user.organization,
-      photo: localStorage.getItem(PHOTO_KEY(uid)) ?? undefined,
-    };
-    setUser(authUser);
+    if (response.refreshToken) {
+      sessionStorage.setItem('refresh_token', response.refreshToken);
+    }
+    setUser(buildAuthUser(response.user));
   };
 
   const updatePhoto = (photo: string) => {
@@ -107,20 +109,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     sessionStorage.setItem('auth_token', response.token);
-    const uid2 = String(response.user.id);
-    setUser({
-      id: uid2,
-      email: response.user.email,
-      role: response.user.role?.toLowerCase() as UserRole,
-      full_name: response.user.fullName,
-      fullName: response.user.fullName,
-      organization: response.user.organization,
-      photo: localStorage.getItem(PHOTO_KEY(uid2)) ?? undefined,
-    });
+    if (response.refreshToken) {
+      sessionStorage.setItem('refresh_token', response.refreshToken);
+    }
+    setUser(buildAuthUser(response.user));
   };
 
   const signOut = async () => {
-    sessionStorage.removeItem('auth_token');
+    clearSession();
     setUser(null);
     apiClient.logout().catch(() => {});
   };
