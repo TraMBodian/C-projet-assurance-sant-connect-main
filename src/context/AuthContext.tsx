@@ -31,10 +31,10 @@ const PHOTO_KEY = (id: string) => `user_photo_${id}`;
 
 function clearSession() {
   sessionStorage.removeItem('auth_token');
-  sessionStorage.removeItem('refresh_token');
+  // Le cookie refresh_token est httpOnly — effacé par le backend sur /logout
 }
 
-function buildAuthUser(userData: any, photo?: string | null): AuthUser {
+function buildAuthUser(userData: any): AuthUser {
   const uid = String(userData.id);
   return {
     id: uid,
@@ -43,7 +43,7 @@ function buildAuthUser(userData: any, photo?: string | null): AuthUser {
     full_name: userData.fullName,
     fullName: userData.fullName,
     organization: userData.organization,
-    photo: photo ?? localStorage.getItem(PHOTO_KEY(uid)) ?? undefined,
+    photo: localStorage.getItem(PHOTO_KEY(uid)) ?? undefined,
   };
 }
 
@@ -52,10 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const handler = () => {
-      clearSession();
-      setUser(null);
-    };
+    const handler = () => { clearSession(); setUser(null); };
     window.addEventListener('auth:expired', handler);
     return () => window.removeEventListener('auth:expired', handler);
   }, []);
@@ -65,7 +62,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const token = sessionStorage.getItem('auth_token');
         if (!token) return;
-
         const userData = await apiClient.getCurrentUser();
         setUser(buildAuthUser(userData));
       } catch {
@@ -80,9 +76,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     const response = await apiClient.login({ email, password });
     sessionStorage.setItem('auth_token', response.token);
-    if (response.refreshToken) {
-      sessionStorage.setItem('refresh_token', response.refreshToken);
-    }
+    // refresh_token arrivé en cookie httpOnly — aucune action JS nécessaire
     setUser(buildAuthUser(response.user));
   };
 
@@ -98,27 +92,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const response = await apiClient.register({
       email, password, fullName,
       role: role.toUpperCase(),
-      organization,
-      telephone,
-      adresse,
+      organization, telephone, adresse,
     });
 
     if (!response.token) {
-      // Compte créé mais en attente de validation admin — pas de session ouverte
+      // Compte en attente de validation admin
       throw new Error('PENDING_APPROVAL');
     }
 
     sessionStorage.setItem('auth_token', response.token);
-    if (response.refreshToken) {
-      sessionStorage.setItem('refresh_token', response.refreshToken);
-    }
     setUser(buildAuthUser(response.user));
   };
 
   const signOut = async () => {
     clearSession();
     setUser(null);
-    apiClient.logout().catch(() => {});
+    apiClient.logout().catch(() => {}); // /logout révoque le cookie côté backend
   };
 
   const value: AuthContextType = { user, loading, signUp, signIn, signOut, updatePhoto, isAuthenticated: !!user };

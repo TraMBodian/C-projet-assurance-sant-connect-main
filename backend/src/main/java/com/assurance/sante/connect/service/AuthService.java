@@ -58,16 +58,17 @@ public class AuthService {
                 .build();
     }
 
-    public AuthResponse refreshAccessToken(String refreshTokenValue) {
-        RefreshToken refreshToken = refreshTokenService.validateRefreshToken(refreshTokenValue);
-        User user = refreshToken.getUser();
+    public AuthResponse refreshAccessToken(String oldRefreshTokenValue) {
+        // validateAndRotate : invalide l'ancien token, émet un nouveau
+        RefreshToken newRefreshToken = refreshTokenService.validateAndRotate(oldRefreshTokenValue);
+        User user = newRefreshToken.getUser();
 
         String newAccessToken = jwtTokenProvider.generateToken(user.getEmail());
 
         return AuthResponse.builder()
                 .user(UserDto.fromEntity(user))
                 .token(newAccessToken)
-                .refreshToken(refreshTokenValue)
+                .refreshToken(newRefreshToken.getToken())
                 .build();
     }
 
@@ -75,6 +76,10 @@ public class AuthService {
         userRepository.findByEmail(email)
                 .ifPresent(refreshTokenService::revokeAllUserTokens);
         activeSessionService.logout(email);
+    }
+
+    public void revokeRefreshToken(String tokenValue) {
+        refreshTokenService.revokeToken(tokenValue);
     }
 
     public AuthResponse register(RegisterRequest request) {

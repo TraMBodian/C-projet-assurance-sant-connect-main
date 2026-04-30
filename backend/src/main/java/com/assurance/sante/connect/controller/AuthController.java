@@ -12,12 +12,17 @@ import com.assurance.sante.connect.service.ActiveSessionService;
 import com.assurance.sante.connect.service.OtpService;
 import com.assurance.sante.connect.service.UserService;
 import com.assurance.sante.connect.security.JwtAuthenticationToken;
-import lombok.RequiredArgsConstructor;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Duration;
 import java.util.Map;
 
 @RestController
@@ -31,16 +36,56 @@ public class AuthController {
     private final UserRepository       userRepository;
     private final UserService          userService;
 
+    @Value("${app.jwtRefreshExpirationMs:604800000}")
+    private long refreshExpirationMs;
+
+    @Value("${app.cookieSecure:false}")
+    private boolean cookieSecure;
+
+    // ─── Cookie helpers ───────────────────────────────────────────────────────
+
+    private void setRefreshCookie(HttpServletResponse response, String tokenValue) {
+        ResponseCookie cookie = ResponseCookie.from("refresh_token", tokenValue)
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite(cookieSecure ? "None" : "Lax")
+                .path("/api/auth")
+                .maxAge(Duration.ofMillis(refreshExpirationMs))
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    private void clearRefreshCookie(HttpServletResponse response) {
+        ResponseCookie cookie = ResponseCookie.from("refresh_token", "")
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite(cookieSecure ? "None" : "Lax")
+                .path("/api/auth")
+                .maxAge(0)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    // ─── Endpoints ────────────────────────────────────────────────────────────
+
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
-        AuthResponse response = authService.login(request);
-        return ResponseEntity.ok(ApiResponse.success(response));
+    public ResponseEntity<ApiResponse<AuthResponse>> login(
+            @Valid @RequestBody LoginRequest request,
+            HttpServletResponse response) {
+
+        AuthResponse auth = authService.login(request);
+
+        // Refresh token → cookie httpOnly (jamais exposé dans le body)
+        setRefreshCookie(response, auth.getRefreshToken());
+        auth.setRefreshToken(null);
+
+        return ResponseEntity.ok(ApiResponse.success(auth));
     }
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request) {
-        AuthResponse response = authService.register(request);
-        return ResponseEntity.ok(ApiResponse.success(response));
+        AuthResponse auth = authService.register(request);
+        return ResponseEntity.ok(ApiResponse.success(auth));
     }
 
     @GetMapping("/me")
@@ -53,21 +98,38 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<String>> logout(Authentication authentication) {
+    public ResponseEntity<ApiResponse<String>> logout(
+            Authentication authentication,
+            @CookieValue(name = "refresh_token", required = false) String refreshToken,
+            HttpServletResponse response) {
+
         if (authentication instanceof JwtAuthenticationToken jwt) {
             authService.logout(jwt.getEmail());
         }
+        // Révoquer le refresh token et effacer le cookie
+        if (refreshToken != null && !refreshToken.isBlank()) {
+            authService.revokeRefreshToken(refreshToken);
+        }
+        clearRefreshCookie(response);
         return ResponseEntity.ok(ApiResponse.success("Déconnexion réussie"));
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<ApiResponse<AuthResponse>> refresh(@RequestBody Map<String, String> body) {
-        String refreshToken = body.get("refreshToken");
+    public ResponseEntity<ApiResponse<AuthResponse>> refresh(
+            @CookieValue(name = "refresh_token", required = false) String refreshToken,
+            HttpServletResponse response) {
+
         if (refreshToken == null || refreshToken.isBlank()) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Refresh token requis"));
+            return ResponseEntity.status(401).body(ApiResponse.error("Refresh token manquant"));
         }
-        AuthResponse response = authService.refreshAccessToken(refreshToken);
-        return ResponseEntity.ok(ApiResponse.success(response));
+
+        // Rotation : ancien token révoqué, nouveau émis
+        AuthResponse auth = authService.refreshAccessToken(refreshToken);
+
+        setRefreshCookie(response, auth.getRefreshToken());
+        auth.setRefreshToken(null);
+
+        return ResponseEntity.ok(ApiResponse.success(auth));
     }
 
     /** Étape 1 : envoyer l'OTP par email */
@@ -78,7 +140,6 @@ public class AuthController {
             return ResponseEntity.badRequest().body(ApiResponse.error("Email requis"));
         }
         if (userRepository.findByEmail(email.toLowerCase()).isEmpty()) {
-            // Ne pas révéler si l'email existe ou non (sécurité)
             return ResponseEntity.ok(ApiResponse.success("Si cet email existe, un code a été envoyé"));
         }
         otpService.sendOtp(email);

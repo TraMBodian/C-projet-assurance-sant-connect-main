@@ -5,13 +5,16 @@ import com.assurance.sante.connect.entity.User;
 import com.assurance.sante.connect.exception.UnauthorizedException;
 import com.assurance.sante.connect.repository.RefreshTokenRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RefreshTokenService {
@@ -23,7 +26,6 @@ public class RefreshTokenService {
 
     @Transactional
     public RefreshToken createRefreshToken(User user) {
-        // Révoquer les anciens tokens de cet utilisateur
         refreshTokenRepository.deleteByUser(user);
 
         RefreshToken token = RefreshToken.builder()
@@ -35,16 +37,18 @@ public class RefreshTokenService {
         return refreshTokenRepository.save(token);
     }
 
-    public RefreshToken validateRefreshToken(String tokenValue) {
-        RefreshToken token = refreshTokenRepository.findByToken(tokenValue)
+    @Transactional
+    public RefreshToken validateAndRotate(String tokenValue) {
+        RefreshToken old = refreshTokenRepository.findByToken(tokenValue)
                 .orElseThrow(() -> new UnauthorizedException("Refresh token invalide ou inexistant"));
 
-        if (token.getExpiresAt().isBefore(LocalDateTime.now())) {
-            refreshTokenRepository.delete(token);
+        if (old.getExpiresAt().isBefore(LocalDateTime.now())) {
+            refreshTokenRepository.delete(old);
             throw new UnauthorizedException("Refresh token expiré, veuillez vous reconnecter");
         }
 
-        return token;
+        // Rotation : l'ancien token est supprimé, un nouveau est émis
+        return createRefreshToken(old.getUser());
     }
 
     @Transactional
@@ -55,5 +59,13 @@ public class RefreshTokenService {
     @Transactional
     public void revokeAllUserTokens(User user) {
         refreshTokenRepository.deleteByUser(user);
+    }
+
+    // Purge quotidienne à 3h du matin
+    @Scheduled(cron = "0 0 3 * * *")
+    @Transactional
+    public void purgeExpiredTokens() {
+        int deleted = refreshTokenRepository.deleteByExpiresAtBefore(LocalDateTime.now());
+        log.info("Purge refresh tokens expirés : {} supprimé(s)", deleted);
     }
 }

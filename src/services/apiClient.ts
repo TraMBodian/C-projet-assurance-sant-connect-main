@@ -16,6 +16,7 @@ export class ApiClient {
     const token = sessionStorage.getItem('auth_token');
 
     const config: RequestInit = {
+      credentials: 'include',           // envoie le cookie httpOnly refresh_token automatiquement
       headers: {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -78,20 +79,13 @@ export class ApiClient {
   }
 
   private async tryRefresh(): Promise<string> {
-    // Plusieurs requêtes qui échouent en 401 simultanément ne déclenchent qu'un seul refresh
+    // Plusieurs requêtes 401 simultanées ne déclenchent qu'un seul appel refresh
     if (this.refreshPromise) return this.refreshPromise;
 
     this.refreshPromise = (async () => {
-      const refreshToken = sessionStorage.getItem('refresh_token');
-      if (!refreshToken) throw new Error('Pas de refresh token');
-
-      const res = await this.request<{ token: string; refreshToken: string }>(
-        '/auth/refresh',
-        { method: 'POST', body: JSON.stringify({ refreshToken }) }
-      );
-
+      // Le cookie httpOnly refresh_token est envoyé automatiquement grâce à credentials:'include'
+      const res = await this.request<{ token: string }>('/auth/refresh', { method: 'POST' });
       sessionStorage.setItem('auth_token', res.token);
-      if (res.refreshToken) sessionStorage.setItem('refresh_token', res.refreshToken);
       return res.token;
     })().finally(() => {
       this.refreshPromise = null;
