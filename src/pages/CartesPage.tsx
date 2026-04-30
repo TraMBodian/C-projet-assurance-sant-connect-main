@@ -106,6 +106,41 @@ function PhotoUpload({ assureId, onUploaded }: { assureId: number; onUploaded: (
   );
 }
 
+// ─── Helpers groupe ───────────────────────────────────────────────────────────
+function parseDetail(raw: any): any[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === "string") {
+    try { const p = JSON.parse(raw); return Array.isArray(p) ? p : []; } catch { return []; }
+  }
+  return [];
+}
+
+function buildMemberCards(groupes: any[]): any[] {
+  const cards: any[] = [];
+  for (const g of groupes) {
+    const membres = parseDetail(g.employesDetail);
+    for (const m of membres) {
+      cards.push({
+        id:            `groupe-${g.id}-m${m.numero ?? cards.length}`,
+        nom:           m.nom ?? "—",
+        prenom:        m.prenom ?? "",
+        sexe:          m.sexe ?? "—",
+        dateNaissance: m.dateNaissance ?? null,
+        numero:        `${g.numero ?? g.id}-M${m.numero ?? "?"}`,
+        garantie:      m.garantie ?? "Standard",
+        statut:        g.statut ?? "Actif",
+        dateFin:       g.dateFin ?? null,
+        lien:          m.lien ?? "—",
+        type:          "MEMBRE_GROUPE",
+        groupeNom:     g.nom ?? "—",
+        groupeNumero:  g.numero ?? g.id,
+      });
+    }
+  }
+  return cards;
+}
+
 // ─── Ligne de champ ───────────────────────────────────────────────────────────
 function Row({ label, value, green }: { label: string; value: string; green?: boolean }) {
   return (
@@ -123,8 +158,9 @@ function InsuranceCard({ a, onPhotoUpdate, isAdmin }: { a: any; onPhotoUpdate?: 
   const type = String(a.type ?? "").toUpperCase();
   const isGroupe  = type === "GROUPE";
   const isFamille = type === "FAMILLE";
+  const isMembre  = type === "MEMBRE_GROUPE";
   const bens: string[] = Array.isArray(a.beneficiaires) ? a.beneficiaires.map(String) : [];
-  const typeLabel = isGroupe ? "GROUPE" : isFamille ? "FAMILLE" : "INDIVIDUEL";
+  const typeLabel = isGroupe ? "GROUPE" : isFamille ? "FAMILLE" : isMembre ? "GROUPE" : "INDIVIDUEL";
 
   return (
     <div className="rounded-2xl overflow-hidden bg-white w-full"
@@ -173,7 +209,7 @@ function InsuranceCard({ a, onPhotoUpdate, isAdmin }: { a: any; onPhotoUpdate?: 
 
           {/* Champs */}
           <div className="space-y-0.5">
-            {!isGroupe && (
+            {!isGroupe && !isMembre && (
               <>
                 <Row label="Sexe"     value={a.sexe ?? "—"} />
                 <Row label="Né(e) le" value={fmt(a.dateNaissance)} />
@@ -187,6 +223,15 @@ function InsuranceCard({ a, onPhotoUpdate, isAdmin }: { a: any; onPhotoUpdate?: 
                 <Row label="Secteur"    value={a.secteur ?? "—"} />
                 <Row label="Employés"   value={String(a.employes ?? "—")} />
                 <Row label="Assurés"    value={String(a.assures ?? (bens.length || "—"))} />
+              </>
+            )}
+            {isMembre && (
+              <>
+                <Row label="Entreprise" value={a.groupeNom ?? "—"} />
+                <Row label="Sexe"       value={a.sexe ?? "—"} />
+                <Row label="Né(e) le"   value={fmt(a.dateNaissance)} />
+                <Row label="Lien"       value={a.lien ?? "—"} />
+                <Row label="Garantie"   value={a.garantie ?? "Standard"} />
               </>
             )}
             <Row label="Statut"        value={a.statut ?? "—"}  green />
@@ -255,9 +300,11 @@ async function downloadCard(a: any) {
   if (!ctx) return;
 
   const bens: string[] = Array.isArray(a.beneficiaires) ? a.beneficiaires.map(String) : [];
-  const isGroupe  = String(a.type ?? "").toUpperCase() === "GROUPE";
-  const isFamille = String(a.type ?? "").toUpperCase() === "FAMILLE";
-  const typeLabel = isGroupe ? "GROUPE" : isFamille ? "FAMILLE" : "INDIVIDUEL";
+  const type      = String(a.type ?? "").toUpperCase();
+  const isGroupe  = type === "GROUPE";
+  const isFamille = type === "FAMILLE";
+  const isMembre  = type === "MEMBRE_GROUPE";
+  const typeLabel = isGroupe ? "GROUPE" : isFamille ? "FAMILLE" : isMembre ? "GROUPE" : "INDIVIDUEL";
 
   const loadImg = (src: string) => new Promise<HTMLImageElement | null>(res => {
     const img = new Image(); img.crossOrigin = "anonymous";
@@ -329,6 +376,8 @@ async function downloadCard(a: any) {
   // Champs texte
   const rows = isGroupe
     ? [["Entreprise", a.nom??"-"], ["Secteur", a.secteur??"-"], ["Employés", String(a.employes??"-")], ["Assurés", String(a.assures??"-")]]
+    : isMembre
+    ? [["Entreprise", a.groupeNom??"-"], ["Sexe", a.sexe??"-"], ["Né(e) le", fmt(a.dateNaissance)], ["Lien", a.lien??"-"]]
     : [["Nom", a.nom??"-"], ["Prénoms", a.prenom??"-"], ["Sexe", a.sexe??"-"], ["Né(e) le", fmt(a.dateNaissance)]];
   const rows2 = [["Téléphone", a.telephone??"-"], ["Garantie", a.garantie??"Standard"], ["Statut", a.statut??"-"], ["Valide", a.dateFin?fmt(a.dateFin):"31/12/2026"]];
 
@@ -395,17 +444,23 @@ export default function CartesPage() {
   const [error,   setError]   = useState(false);
 
   useEffect(() => {
-    DataService.getAssures()
-      .then(list => {
-        const all = Array.isArray(list) ? list : [];
-        setAssures(isClient ? all.filter((a: any) => a.email === user?.email) : all);
+    Promise.all([DataService.getAssures(), DataService.getGroupes()])
+      .then(([assureList, groupeList]) => {
+        const allAssures = Array.isArray(assureList) ? assureList : [];
+        const allGroupes = Array.isArray(groupeList) ? groupeList : [];
+        const membres    = isClient ? [] : buildMemberCards(allGroupes);
+        const combined   = [
+          ...(isClient ? allAssures.filter((a: any) => a.email === user?.email) : allAssures),
+          ...membres,
+        ];
+        setAssures(combined);
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, [isClient, user?.email]);
 
   const filtered = assures.filter(a =>
-    [a.nom, a.prenom, a.numero].some(v =>
+    [a.nom, a.prenom, a.numero, a.groupeNom].some(v =>
       String(v ?? "").toLowerCase().includes(search.toLowerCase())
     )
   );

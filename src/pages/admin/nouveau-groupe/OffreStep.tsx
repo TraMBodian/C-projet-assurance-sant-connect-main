@@ -3,6 +3,7 @@ import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, Users } from "@/components/ui/Icons";
+import { getTarifs } from "@/services/tarifService";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -65,6 +66,19 @@ export default function OffreStep({ offre, onChange, onContinue }: Props) {
 
   const total = offre.adultes + offre.enfants + offre.personnesAgees;
   const canContinue = total > 0;
+
+  // Décompte estimatif des primes
+  const tarifs         = getTarifs();
+  const primeAdultes   = offre.adultes       * tarifs.primeAdulte;
+  const primeEnfants   = offre.enfants       * tarifs.primeEnfant;
+  const primeAges      = offre.personnesAgees * tarifs.primeAdulteAge;
+  const primeNette     = primeAdultes + primeEnfants + primeAges;
+  const cp             = Math.round(primeNette * tarifs.tauxCP   / 100);
+  const taxes          = Math.round((primeNette + cp) * tarifs.tauxTaxe / 100);
+  const totalAPayer    = primeNette + cp + taxes;
+
+  const fcfa = (n: number) =>
+    n.toLocaleString("fr-FR") + " FCFA";
 
   return (
     <AppLayout subHeader={
@@ -186,6 +200,80 @@ export default function OffreStep({ offre, onChange, onContinue }: Props) {
                 ) : null;
               })}
             </div>
+          </Card>
+        )}
+
+        {/* Décompte estimatif des primes */}
+        {total > 0 && (
+          <Card className="p-5 space-y-3">
+            <h3 className="font-semibold text-sm border-b pb-2" style={{ color: "#1B5299" }}>
+              Décompte estimatif des primes
+            </h3>
+
+            <table className="w-full text-xs">
+              <tbody>
+                {offre.adultes > 0 && (
+                  <tr className="border-b border-gray-100">
+                    <td className="py-1.5 text-gray-600">
+                      Adultes ({offre.adultes} × {fcfa(tarifs.primeAdulte)})
+                    </td>
+                    <td className="py-1.5 text-right font-semibold text-blue-700">
+                      {fcfa(primeAdultes)}
+                    </td>
+                  </tr>
+                )}
+                {offre.enfants > 0 && (
+                  <tr className="border-b border-gray-100">
+                    <td className="py-1.5 text-gray-600">
+                      Enfants ({offre.enfants} × {fcfa(tarifs.primeEnfant)})
+                    </td>
+                    <td className="py-1.5 text-right font-semibold text-green-700">
+                      {fcfa(primeEnfants)}
+                    </td>
+                  </tr>
+                )}
+                {offre.personnesAgees > 0 && (
+                  <tr className="border-b border-gray-100">
+                    <td className="py-1.5 text-gray-600">
+                      Personnes âgées ({offre.personnesAgees} × {fcfa(tarifs.primeAdulteAge)})
+                    </td>
+                    <td className="py-1.5 text-right font-semibold text-purple-700">
+                      {fcfa(primeAges)}
+                    </td>
+                  </tr>
+                )}
+                <tr className="border-b border-gray-100">
+                  <td className="py-1.5 text-gray-600">Prime nette</td>
+                  <td className="py-1.5 text-right font-semibold">{fcfa(primeNette)}</td>
+                </tr>
+                <tr className="border-b border-gray-100">
+                  <td className="py-1.5 text-gray-500">
+                    Coût de police ({tarifs.tauxCP}%)
+                  </td>
+                  <td className="py-1.5 text-right text-gray-600">{fcfa(cp)}</td>
+                </tr>
+                <tr className="border-b border-gray-100">
+                  <td className="py-1.5 text-gray-500">
+                    Taxes ({tarifs.tauxTaxe}%)
+                  </td>
+                  <td className="py-1.5 text-right text-gray-600">{fcfa(taxes)}</td>
+                </tr>
+                <tr>
+                  <td className="pt-2 font-bold text-sm text-white rounded-l-lg px-3"
+                    style={{ background: "#1B5299" }}>
+                    TOTAL À PAYER
+                  </td>
+                  <td className="pt-2 font-black text-sm text-white text-right rounded-r-lg px-3"
+                    style={{ background: "#1B5299" }}>
+                    {fcfa(totalAPayer)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <p className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
+              Estimation basée sur les tarifs actuels. Le montant définitif sera confirmé à l'étape suivante.
+            </p>
           </Card>
         )}
 
