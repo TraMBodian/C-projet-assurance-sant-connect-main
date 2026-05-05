@@ -7,7 +7,6 @@ import { NotificationSystem } from "@/components/NotificationSystem";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DataService } from "@/services/dataService";
-import { LiveChat } from "@/components/LiveChat";
 import { useAuth } from "@/context/AuthContext";
 
 const IDLE_TIMEOUT   = 30 * 60 * 1000; // 30 minutes
@@ -284,9 +283,6 @@ export default function AppLayout({ children, title, subHeader }: AppLayoutProps
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* ── Live Chat support ──────────────────────────────────────────── */}
-      <LiveChat />
 
       {/* ── Alerte inactivité ──────────────────────────────────────────── */}
       {showIdleWarning && (

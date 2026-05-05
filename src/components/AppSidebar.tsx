@@ -31,6 +31,7 @@ const adminNavItems: NavItem[] = [
     label: "Production",
     icon: <Shield size={18} />,
     children: [
+      { label: "Propositions",    path: "/admin/propositions" },
       { label: "Polices",         path: "/polices" },
       { label: "Maladie Famille", path: "/admin/maladie-famille" },
       { label: "Maladie Groupe",  path: "/admin/maladie-groupe" },

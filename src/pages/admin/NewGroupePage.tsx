@@ -29,7 +29,7 @@ import {
 } from "./NewFamillePage";
 import { getTarifs, type TarifSettings } from "@/services/tarifService";
 import { LogoUpload } from "@/components/PhotoUpload";
-import OffreStep, { type OffrePopulation, OFFRE_VIDE } from "./nouveau-groupe/OffreStep";
+import OffreStep, { type OffrePopulation, type TarifsGroupe, OFFRE_VIDE } from "./nouveau-groupe/OffreStep";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -615,6 +615,7 @@ export default function NewGroupePage() {
   const isEditing = new URLSearchParams(window.location.search).has("id");
   const [step, setStep] = useState<"offre" | "formulaire" | "apercu">(isEditing ? "formulaire" : "offre");
   const [offre, setOffre] = useState<OffrePopulation>(OFFRE_VIDE);
+  const [tarifsPerso, setTarifsPerso] = useState<TarifsGroupe | null>(null);
   useLayoutEffect(() => { document.querySelector("main")?.scrollTo(0, 0); }, [step]);
 
   // ── UI ──
@@ -715,6 +716,13 @@ export default function NewGroupePage() {
           setParseResult({ membres: detail, errors: [] });
         }
         if (groupe.logo) setLogo(groupe.logo);
+        if (groupe.tarifsPersoAdulte != null && groupe.tarifsPersoEnfant != null && groupe.tarifsPersoAdulteAge != null) {
+          setTarifsPerso({
+            primeAdulte:    groupe.tarifsPersoAdulte,
+            primeEnfant:    groupe.tarifsPersoEnfant,
+            primeAdulteAge: groupe.tarifsPersoAdulteAge,
+          });
+        }
       })
       .catch(() => toast.error("Erreur lors du chargement"));
   }, [searchParams]);
@@ -761,6 +769,19 @@ export default function NewGroupePage() {
     if (file) handleFileSelect(file);
   };
 
+  // ── Continuer depuis OffreStep → synchro des tarifs personnalisés ──
+  const handleOffreContinue = () => {
+    if (tarifsPerso) {
+      setTarifs(t => ({
+        ...t,
+        primeEnfant:   tarifsPerso.primeEnfant,
+        primeAdulte:   tarifsPerso.primeAdulte,
+        primeAdulteAge: tarifsPerso.primeAdulteAge,
+      }));
+    }
+    setStep("formulaire");
+  };
+
   // ── Étape 2 : Confirmer → Backend insert + historique ──
   const handleConfirm = async () => {
     if (membres.length === 0) return;
@@ -779,9 +800,12 @@ export default function NewGroupePage() {
       cp:                 (cpEffectif * duree).toString(),
       taxes:              (taxesEffectif * duree).toString(),
       tauxRemboursement,
-      tarifPrimeEnfant:   tarifs.primeEnfant,
-      tarifPrimeAdulte:   tarifs.primeAdulte,
+      tarifPrimeEnfant:    tarifs.primeEnfant,
+      tarifPrimeAdulte:    tarifs.primeAdulte,
       tarifPrimeAdulteAge: tarifs.primeAdulteAge,
+      tarifsPersoAdulte:   tarifsPerso?.primeAdulte   ?? null,
+      tarifsPersoEnfant:   tarifsPerso?.primeEnfant   ?? null,
+      tarifsPersoAdulteAge: tarifsPerso?.primeAdulteAge ?? null,
       employesDetail: membres,
       offreAdultes:        offre.adultes,
       offreEnfants:        offre.enfants,
@@ -820,6 +844,7 @@ export default function NewGroupePage() {
   const doReset = () => {
     setStep("offre");
     setOffre(OFFRE_VIDE);
+    setTarifsPerso(null);
     setPendingFile(null);
     setFileName("");
     setMembres([]);
@@ -1108,7 +1133,9 @@ export default function NewGroupePage() {
       <OffreStep
         offre={offre}
         onChange={setOffre}
-        onContinue={() => setStep("formulaire")}
+        onContinue={handleOffreContinue}
+        tarifsPerso={tarifsPerso}
+        onTarifsPersoChange={setTarifsPerso}
       />
     );
   }

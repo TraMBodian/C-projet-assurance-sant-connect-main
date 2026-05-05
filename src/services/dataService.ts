@@ -1,5 +1,6 @@
 // Data service - connecté au backend Spring Boot
 import { apiClient } from './apiClient';
+import type { Proposition, StatutProposition } from '@/pages/admin/nouvelle-proposition/types';
 
 // ─── Helpers réseau ───────────────────────────────────────────────────────────
 
@@ -17,8 +18,9 @@ function lsSet(key: string, data: any[]): void {
   localStorage.setItem(key, JSON.stringify(data));
 }
 
-const LS_GROUPES  = "cnart_groupes_local";
-const LS_FAMILLES = "cnart_familles_local";
+const LS_GROUPES       = "cnart_groupes_local";
+const LS_FAMILLES      = "cnart_familles_local";
+const LS_PROPOSITIONS  = "cnart_propositions_local";
 
 const localGroupes = {
   getAll:    ()                  => lsGet(LS_GROUPES),
@@ -37,6 +39,15 @@ const localGroupes = {
     lsSet(LS_GROUPES, lsGet(LS_GROUPES).filter((g: any) => g.id !== id));
   },
 };
+
+// ─── Référence auto-incrémentée ──────────────────────────────────────────────
+
+function nextPropRef(): string {
+  const year  = new Date().getFullYear();
+  const items = lsGet(LS_PROPOSITIONS) as Proposition[];
+  const count = items.filter(p => p.reference.startsWith(`PROP-${year}-`)).length + 1;
+  return `PROP-${year}-${String(count).padStart(4, "0")}`;
+}
 
 const localFamilles = {
   getAll:    ()                  => lsGet(LS_FAMILLES),
@@ -284,5 +295,50 @@ export class DataService {
     } catch {
       return localGroupes.getById(id);
     }
+  }
+
+  // ─── Propositions (localStorage uniquement — pas encore d'API backend) ───────
+
+  static getPropositions(): Proposition[] {
+    return lsGet(LS_PROPOSITIONS) as Proposition[];
+  }
+
+  static getPropositionById(id: string): Proposition | null {
+    return (lsGet(LS_PROPOSITIONS) as Proposition[]).find(p => p.id === id) ?? null;
+  }
+
+  static createProposition(data: Omit<Proposition, 'id' | 'reference' | 'createdAt' | 'updatedAt'>): Proposition {
+    const now  = new Date().toISOString();
+    const prop: Proposition = {
+      ...data,
+      id:        `prop_${Date.now()}`,
+      reference: nextPropRef(),
+      createdAt: now,
+      updatedAt: now,
+    };
+    lsSet(LS_PROPOSITIONS, [prop, ...lsGet(LS_PROPOSITIONS)]);
+    return prop;
+  }
+
+  static updateProposition(id: string, patch: Partial<Proposition>): Proposition {
+    const list = lsGet(LS_PROPOSITIONS) as Proposition[];
+    const idx  = list.findIndex(p => p.id === id);
+    if (idx === -1) throw new Error(`Proposition ${id} introuvable`);
+    const updated = { ...list[idx], ...patch, id, updatedAt: new Date().toISOString() };
+    list[idx] = updated;
+    lsSet(LS_PROPOSITIONS, list);
+    return updated;
+  }
+
+  static updatePropositionStatut(id: string, statut: StatutProposition): Proposition {
+    const now  = new Date().toISOString();
+    const patch: Partial<Proposition> = { statut };
+    if (statut === 'envoyee')  patch.envoyeeAt  = now;
+    if (statut === 'acceptee') patch.accepteeAt = now;
+    return DataService.updateProposition(id, patch);
+  }
+
+  static deleteProposition(id: string): void {
+    lsSet(LS_PROPOSITIONS, (lsGet(LS_PROPOSITIONS) as Proposition[]).filter(p => p.id !== id));
   }
 }

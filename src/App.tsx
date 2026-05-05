@@ -32,6 +32,8 @@ import MaladieGroupePage from "./pages/admin/MaladieGroupePage";
 import NewGroupePage from "./pages/admin/NewGroupePage";
 import MaladieFamillePage from "./pages/admin/MaladieFamillePage";
 import NewFamillePage from "./pages/admin/NewFamillePage";
+import PropositionsPage from "./pages/admin/PropositionsPage";
+import NewPropositionPage from "./pages/admin/NewPropositionPage";
 import AdminProfilePage from "./pages/AdminProfilePage";
 import ArchivePage from "./pages/admin/ArchivePage";
 import ConditionsGeneralesPage from "./pages/ConditionsGeneralesPage";
@@ -84,6 +86,8 @@ const App = () => (
             <Route path="/admin/maladie-famille/new" element={<ProtectedRoute element={<NewFamillePage />} requiredRoles={['admin']} />} />
             <Route path="/admin/maladie-groupe" element={<ProtectedRoute element={<MaladieGroupePage />} requiredRoles={['admin']} />} />
             <Route path="/admin/maladie-groupe/new" element={<ProtectedRoute element={<NewGroupePage />} requiredRoles={['admin']} />} />
+            <Route path="/admin/propositions" element={<ProtectedRoute element={<PropositionsPage />} requiredRoles={['admin']} />} />
+            <Route path="/admin/nouvelle-proposition" element={<ProtectedRoute element={<NewPropositionPage />} requiredRoles={['admin']} />} />
             <Route path="/verify/:numero" element={<VerifyPage />} />
             <Route path="/conditions-generales" element={<ConditionsGeneralesPage />} />
             <Route path="/contact" element={<ContactPage />} />
