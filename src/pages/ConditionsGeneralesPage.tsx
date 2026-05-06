@@ -202,11 +202,11 @@ export const CHAPITRES: Chapitre[] = [
     ],
   },
   {
-    numero: "5–8",
-    titre:  "Cessation, déclaration, primes & sinistre",
+    numero: "5",
+    titre:  "Cessation des garanties",
     articles: [
       {
-        titre: "Chapitre 5 — Cessation des garanties",
+        titre: "Article 7 — Cessation des garanties",
         contenu: (
           <div className="text-sm leading-relaxed space-y-2">
             <p><strong>1 — Résiliation par l'assuré :</strong> cessation des prestations à compter de la date de résiliation.</p>
@@ -219,11 +219,17 @@ export const CHAPITRES: Chapitre[] = [
           </div>
         ),
       },
+    ],
+  },
+  {
+    numero: "6",
+    titre:  "Déclaration du risque",
+    articles: [
       {
-        titre: "Article 7 — Déclaration du risque",
+        titre: "Article 8 — Déclaration du risque",
         contenu: (
           <div className="text-sm leading-relaxed space-y-2">
-            <p>Le souscripteur doit remettre un <strong>questionnaire-proposition</strong> dûment rempli et déclarer toute modification du risque par lettre recommandée dans les 15 jours :</p>
+            <p>Le souscripteur doit remettre un <strong>questionnaire-proposition</strong> dûment rempli et déclarer toute modification du risque par lettre recommandée dans les <strong>15 jours</strong> suivant :</p>
             <ul className="list-disc ml-5 text-xs space-y-0.5">
               <li>Changement de domicile</li>
               <li>Changement de profession d'un assuré</li>
@@ -231,64 +237,79 @@ export const CHAPITRES: Chapitre[] = [
               <li>Retraite ou cessation d'activité</li>
               <li>Changement de situation ou de régime matrimonial</li>
             </ul>
-            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">Si la modification constitue une aggravation, la Société peut dénoncer le contrat ou proposer un nouveau taux. Si elle atténue le risque, le souscripteur a droit à une réduction de prime.</p>
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">Si la modification constitue une aggravation, la Société peut dénoncer le contrat ou proposer un nouveau taux. Si elle atténue le risque, le souscripteur a droit à une réduction de prime correspondante.</p>
           </div>
         ),
       },
+    ],
+  },
+  {
+    numero: "7",
+    titre:  "Cotisations et primes",
+    articles: [
       {
-        titre: "Article 8 — Primes",
+        titre: "Article 9 — Paiement des primes",
         contenu: (
           <div className="text-sm leading-relaxed space-y-2">
-            <p>La prise d'effet est subordonnée au paiement de la prime <em>(art. 13 Code des assurances)</em>.</p>
-            <p>En cas de non-paiement dans les <strong>10 jours</strong> de l'échéance, la Société peut, par lettre recommandée, <strong>suspendre la garantie 30 jours</strong> après envoi. Elle peut ensuite résilier 10 jours après ce délai.</p>
-            <div className="bg-orange-50 border border-orange-200 rounded p-2 text-xs">
-              <p className="font-semibold text-orange-800">Assurance TAXAWU :</p>
-              <p className="text-orange-700">La prime pour les enfants est majorée par avenant à partir de l'échéance suivant leur 18e anniversaire. À défaut d'acceptation, la garantie prend fin 30 jours après notification.</p>
+            <p>La prise d'effet du contrat est subordonnée au paiement de la prime <em>(art. 13 Code des assurances)</em>. Les primes sont payables d'avance aux échéances convenues aux Conditions Particulières.</p>
+            <p>En cas de non-paiement dans les <strong>10 jours</strong> de l'échéance, la Société peut, par lettre recommandée avec accusé de réception, <strong>suspendre la garantie 30 jours</strong> après l'envoi de cette mise en demeure. Elle peut ensuite résilier le contrat dans les <strong>10 jours</strong> suivant ce délai.</p>
+            <div className="bg-orange-50 border border-orange-200 rounded p-3 text-xs space-y-1">
+              <p className="font-semibold text-orange-800">Majoration — Assurance TAXAWU :</p>
+              <p className="text-orange-700">La prime pour les enfants est majorée par avenant dès l'échéance suivant leur 18e anniversaire. En l'absence d'acceptation de la majoration par le souscripteur dans un délai de <strong>30 jours</strong> après notification, la garantie prend fin automatiquement.</p>
             </div>
           </div>
         ),
       },
+    ],
+  },
+  {
+    numero: "8",
+    titre:  "Déclaration et règlement des sinistres",
+    articles: [
       {
-        titre: "Article 9 — Obligations en cas de sinistre",
+        titre: "Article 10 — Obligations de l'assuré en cas de sinistre",
         contenu: (
           <div className="text-sm leading-relaxed space-y-2">
-            <p>L'assuré doit déclarer tout sinistre <strong>sous peine de déchéance</strong> :</p>
+            <p>L'assuré doit déclarer tout sinistre à la Société <strong>sous peine de déchéance</strong>, dans les délais suivants :</p>
             <div className="grid sm:grid-cols-2 gap-2 text-xs">
               <div className="bg-red-50 border border-red-200 rounded p-2">
                 <p className="font-semibold text-red-800">Accident / intervention chirurgicale</p>
-                <p className="text-red-700">Dans les <strong>10 jours</strong> suivants</p>
+                <p className="text-red-700">Dans les <strong>10 jours</strong> suivant l'événement</p>
               </div>
               <div className="bg-amber-50 border border-amber-200 rounded p-2">
                 <p className="font-semibold text-amber-800">Maladie</p>
                 <p className="text-amber-700">Dans les <strong>30 jours</strong> suivant la première constatation médicale</p>
               </div>
             </div>
-            <p className="text-xs">L'assuré doit également transmettre toutes pièces justificatives dans les <strong>30 jours</strong> suivant la guérison, et se soumettre à tout examen demandé par la Société.</p>
-            <p className="text-xs text-red-700 bg-red-50 border border-red-100 rounded p-2">La production de documents intentionnellement faux entraîne la <strong>déchéance du droit à indemnité</strong>.</p>
+            <p className="text-xs">L'assuré est également tenu de transmettre toutes pièces justificatives dans les <strong>30 jours</strong> suivant la guérison ou la fin du traitement, et de se soumettre à tout examen médical requis par la Société.</p>
+            <p className="text-xs text-red-700 bg-red-50 border border-red-100 rounded p-2">La production de documents intentionnellement faux ou falsifiés entraîne la <strong>déchéance définitive du droit à indemnité</strong> pour le sinistre concerné.</p>
           </div>
         ),
       },
       {
-        titre: "Article 10 — Expertise",
+        titre: "Article 11 — Expertise médicale",
         contenu: (
-          <div className="text-sm leading-relaxed">
-            <p>Les contestations médicales entre la Société et l'Assuré sont soumises à l'expertise d'un médecin nommé amiablement ou par ordonnance du Président du Tribunal compétent. Chaque partie supporte par moitié les honoraires de l'expert.</p>
+          <div className="text-sm leading-relaxed space-y-2">
+            <p>Toute contestation d'ordre médical entre la Société et l'Assuré est soumise à l'expertise d'un médecin désigné d'un commun accord ou, à défaut, nommé par ordonnance du Président du Tribunal compétent.</p>
+            <p>Les honoraires de l'expert sont supportés <strong>par moitié</strong> par chaque partie. Les conclusions de l'expert s'imposent aux deux parties, sous réserve des voies de recours judiciaires.</p>
           </div>
         ),
       },
       {
-        titre: "Article 11 — Règlement des prestations",
+        titre: "Article 12 — Règlement des prestations",
         contenu: (
-          <div className="text-sm leading-relaxed">
-            <p>Le règlement est effectué dans un délai de <strong>30 jours</strong> à compter de l'accord des parties ou de la décision judiciaire. La Société est subrogée dans les droits de l'assuré contre les responsables du sinistre <em>(art. 42 Code des assurances)</em>.</p>
+          <div className="text-sm leading-relaxed space-y-2">
+            <p>Le règlement des indemnités est effectué dans un délai de <strong>30 jours</strong> à compter de l'accord amiable entre les parties ou, à défaut, de la décision judiciaire définitive.</p>
+            <p>La Société est de plein droit subrogée dans les droits et actions de l'assuré contre les tiers responsables du sinistre, à concurrence des indemnités versées <em>(art. 42 Code des assurances)</em>.</p>
           </div>
         ),
       },
       {
-        titre: "Article 12 — Prescription",
+        titre: "Article 13 — Prescription",
         contenu: (
-          <div className="text-sm leading-relaxed">
-            <p>Toutes actions dérivant du présent contrat sont prescrites par <strong>2 ans</strong> à compter de l'événement qui leur donne naissance <em>(art. 28 Code des assurances)</em>.</p>
+          <div className="text-sm leading-relaxed space-y-2">
+            <p>Toutes actions dérivant du présent contrat sont prescrites par <strong>deux (2) ans</strong> à compter de l'événement qui leur donne naissance <em>(art. 28 Code CIMA)</em>.</p>
+            <p className="text-xs text-muted-foreground">La prescription est interrompue par une des causes ordinaires d'interruption de la prescription ainsi que par la désignation d'expert, à la suite d'un sinistre, conformément aux règles du Code CIMA.</p>
           </div>
         ),
       },
@@ -446,12 +467,15 @@ const CONVENTIONS: Chapitre = {
 // ─── Liens de navigation ──────────────────────────────────────────────────────
 
 const NAV_SECTIONS = [
-  { id: "ch-1",   label: "Étendue de la garantie" },
-  { id: "ch-2",   label: "Entrée en vigueur" },
-  { id: "ch-3",   label: "Risques exclus" },
-  { id: "ch-4",   label: "Formation et durée" },
-  { id: "ch-5",   label: "Cessation & sinistre" },
-  { id: "ch-cs",  label: "Conventions Spéciales" },
+  { id: "ch-1",  label: "Étendue de la garantie" },
+  { id: "ch-2",  label: "Entrée en vigueur" },
+  { id: "ch-3",  label: "Risques exclus" },
+  { id: "ch-4",  label: "Formation et durée" },
+  { id: "ch-5",  label: "Cessation des garanties" },
+  { id: "ch-6",  label: "Déclaration du risque" },
+  { id: "ch-7",  label: "Cotisations et primes" },
+  { id: "ch-8",  label: "Sinistres et règlement" },
+  { id: "ch-cs", label: "Conventions Spéciales" },
 ];
 
 // ─── Composant articles collapsibles ─────────────────────────────────────────
@@ -508,30 +532,6 @@ export default function ConditionsGeneralesPage() {
   const scrollTo = (id: string) => {
     const el = document.getElementById(id);
     if (el) scrollRef.current?.scrollTo({ top: el.offsetTop - 110, behavior: "smooth" });
-  };
-
-  const handlePrint = () => {
-    const el = scrollRef.current;
-    if (!el) return;
-
-    // Expand container so all content is visible for print
-    el.style.height = "auto";
-    el.style.overflowY = "visible";
-
-    // Inject print styles: hide fixed UI elements
-    const style = document.createElement("style");
-    style.id = "__cg_print__";
-    style.textContent = `@media print { [data-noprint] { display: none !important; } }`;
-    document.head.appendChild(style);
-
-    window.print();
-
-    // Restore after dialog closes
-    setTimeout(() => {
-      el.style.height = "100vh";
-      el.style.overflowY = "auto";
-      document.getElementById("__cg_print__")?.remove();
-    }, 500);
   };
 
   return (
@@ -652,6 +652,9 @@ export default function ConditionsGeneralesPage() {
         <section id="ch-3">  <ChapitreSection ch={CHAPITRES[2]} /></section>
         <section id="ch-4">  <ChapitreSection ch={CHAPITRES[3]} /></section>
         <section id="ch-5">  <ChapitreSection ch={CHAPITRES[4]} /></section>
+        <section id="ch-6">  <ChapitreSection ch={CHAPITRES[5]} /></section>
+        <section id="ch-7">  <ChapitreSection ch={CHAPITRES[6]} /></section>
+        <section id="ch-8">  <ChapitreSection ch={CHAPITRES[7]} /></section>
         <section id="ch-cs"> <ChapitreSection ch={CONVENTIONS}  /></section>
 
         <p className="text-center text-xs text-gray-400 pb-4">

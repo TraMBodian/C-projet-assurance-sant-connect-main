@@ -206,31 +206,60 @@ export default function PropositionFamilleForm({ onBack, onSaved }: Props) {
       </Card>
 
       {/* ── Prime estimée (affichée dès que la population est renseignée) ── */}
-      {nbTotal > 0 && (
-        <Card className="overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-3 text-white" style={{ background: "#1B5299" }}>
-            <Calculator className="w-4 h-4 shrink-0" />
-            <p className="font-semibold text-sm">Prime estimée</p>
-            <span className="ml-auto text-xs opacity-80">indicative — sujet à validation</span>
-          </div>
-          <div className="p-4 space-y-2">
-            {[
-              { label: `Adultes × ${nbAdultes}`,         value: nbAdultes        * getTarifs().primeAdulte    * GARANTIE_MULT[typeGarantie] * dureeAns, show: nbAdultes > 0 },
-              { label: `Enfants × ${nbEnfants}`,         value: nbEnfants        * getTarifs().primeEnfant    * GARANTIE_MULT[typeGarantie] * dureeAns, show: nbEnfants > 0 },
-              { label: `Âgés × ${nbPersonnesAgees}`,     value: nbPersonnesAgees * getTarifs().primeAdulteAge * GARANTIE_MULT[typeGarantie] * dureeAns, show: nbPersonnesAgees > 0 },
-            ].filter(r => r.show).map(r => (
-              <div key={r.label} className="flex justify-between text-sm">
-                <span className="text-muted-foreground">{r.label}</span>
-                <span className="font-mono">{Math.round(r.value).toLocaleString("fr-FR")} FCFA</span>
-              </div>
-            ))}
-            <div className="flex justify-between items-center -mx-4 -mb-4 px-4 py-3 mt-2 text-white" style={{ background: "#1B5299" }}>
-              <span className="font-bold">TOTAL ESTIMÉ ({dureeAns} an{dureeAns > 1 ? "s" : ""})</span>
-              <span className="font-bold text-lg font-mono">{primeEstimee.toLocaleString("fr-FR")} FCFA</span>
+      {nbTotal > 0 && (() => {
+        const t    = getTarifs();
+        const mult = GARANTIE_MULT[typeGarantie] ?? 1;
+        const pA   = Math.round(nbAdultes        * t.primeAdulte    * mult);
+        const pE   = Math.round(nbEnfants        * t.primeEnfant    * mult);
+        const pAg  = Math.round(nbPersonnesAgees * t.primeAdulteAge * mult);
+        const primeNette = pA + pE + pAg;
+        const cp    = Math.round(primeNette * t.tauxCP   / 100);
+        const taxes = Math.round((primeNette + cp) * t.tauxTaxe / 100);
+        const sousTotal = primeNette + cp + taxes;
+        return (
+          <Card className="overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-3 text-white" style={{ background: "#1B5299" }}>
+              <Calculator className="w-4 h-4 shrink-0" />
+              <p className="font-semibold text-sm">Prime estimée</p>
+              <span className="ml-auto text-xs opacity-80">indicative — sujet à validation</span>
             </div>
-          </div>
-        </Card>
-      )}
+            <div className="divide-y">
+              {[
+                { label: `Adultes × ${nbAdultes}`,           value: pA,         show: nbAdultes > 0 },
+                { label: `Enfants × ${nbEnfants}`,           value: pE,         show: nbEnfants > 0 },
+                { label: `Personnes âgées × ${nbPersonnesAgees}`, value: pAg,   show: nbPersonnesAgees > 0 },
+              ].filter(r => r.show).map(r => (
+                <div key={r.label} className="flex justify-between px-4 py-2.5 text-sm">
+                  <span className="text-muted-foreground">{r.label}</span>
+                  <span className="font-mono">{r.value.toLocaleString("fr-FR")} FCFA</span>
+                </div>
+              ))}
+              <div className="flex justify-between px-4 py-2.5 text-sm bg-blue-50 font-semibold">
+                <span>Prime nette ({typeGarantie})</span>
+                <span className="font-mono text-blue-700">{primeNette.toLocaleString("fr-FR")} FCFA</span>
+              </div>
+              <div className="flex justify-between px-4 py-2.5 text-sm">
+                <span className="text-muted-foreground">Coût de police ({t.tauxCP} %)</span>
+                <span className="font-mono">{cp.toLocaleString("fr-FR")} FCFA</span>
+              </div>
+              <div className="flex justify-between px-4 py-2.5 text-sm">
+                <span className="text-muted-foreground">Taxes ({t.tauxTaxe} %)</span>
+                <span className="font-mono">{taxes.toLocaleString("fr-FR")} FCFA</span>
+              </div>
+              {dureeAns > 1 && (
+                <div className="flex justify-between px-4 py-2.5 text-sm">
+                  <span className="text-muted-foreground">Sous-total (1 an)</span>
+                  <span className="font-mono">{sousTotal.toLocaleString("fr-FR")} FCFA</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center px-4 py-3 text-white font-bold" style={{ background: "#1B5299" }}>
+                <span>TOTAL ESTIMÉ ({dureeAns} an{dureeAns > 1 ? "s" : ""})</span>
+                <span className="text-lg font-mono">{primeEstimee.toLocaleString("fr-FR")} FCFA</span>
+              </div>
+            </div>
+          </Card>
+        );
+      })()}
 
       {/* ── Couverture & Durée ── */}
       <Card className="p-6 space-y-4">

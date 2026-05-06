@@ -445,6 +445,12 @@ export default function MaladieGroupePage() {
                         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
                           <h3 className="text-sm sm:text-xl font-semibold truncate">{groupe.entreprise}</h3>
                           <Badge variant={groupe.statut === "Actif" ? "default" : "secondary"}>{groupe.statut}</Badge>
+                          {groupe.propositionRef && (
+                            <span className="text-xs flex items-center gap-1 text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded font-mono">
+                              <FileText className="w-3 h-3 shrink-0" />
+                              {groupe.propositionRef}
+                            </span>
+                          )}
                           {groupe.echeanceAuto && (
                             <span className="text-xs flex items-center gap-1 text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
                               <RefreshCw className="w-3 h-3" /> Auto

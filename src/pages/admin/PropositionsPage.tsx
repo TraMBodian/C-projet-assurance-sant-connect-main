@@ -3,11 +3,12 @@ import { useNavigate, useLocation } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input }  from "@/components/ui/input";
+import { Label }  from "@/components/ui/label";
 import { Card }   from "@/components/ui/card";
 import {
-  Plus, Search, FileText, Building2, Users, Eye,
+  Plus, Search, FileText, Building2, Users,
   Send, CheckCircle2, XCircle, ShieldCheck, Trash2,
-  Clock, ArrowRight, Loader2, X,
+  Loader2, X, Calculator, Pencil,
 } from "@/components/ui/Icons";
 import { toast } from "sonner";
 import {
@@ -15,6 +16,7 @@ import {
   AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DataService } from "@/services/dataService";
 import type { Proposition, StatutProposition } from "./nouvelle-proposition/types";
 
@@ -28,10 +30,9 @@ const STATUT_STYLES: Record<StatutProposition, { label: string; bg: string; text
   convertie:  { label: "Convertie",   bg: "bg-purple-100", text: "text-purple-700", dot: "bg-purple-500" },
 };
 
-// ─── Détail proposiiton ────────────────────────────────────────────────────────
+// ─── Résumé proposition ───────────────────────────────────────────────────────
 
 function PropositionDetail({ prop }: { prop: Proposition }) {
-  const d = prop.famille ?? prop.groupe;
   if (!prop.famille && !prop.groupe) return null;
   return (
     <div className="text-xs text-muted-foreground space-y-0.5 mt-1">
@@ -39,10 +40,13 @@ function PropositionDetail({ prop }: { prop: Proposition }) {
         <>
           <p><strong>Souscripteur :</strong> {prop.famille.souscripteurNom}</p>
           <p>
-            {prop.famille.nbAdultes > 0 && `${prop.famille.nbAdultes} adulte${prop.famille.nbAdultes > 1 ? "s" : ""}`}
-            {prop.famille.nbEnfants > 0 && ` · ${prop.famille.nbEnfants} enfant${prop.famille.nbEnfants > 1 ? "s" : ""}`}
-            {prop.famille.nbPersonnesAgees > 0 && ` · ${prop.famille.nbPersonnesAgees} âgé${prop.famille.nbPersonnesAgees > 1 ? "s" : ""}`}
-            {" · "}{prop.famille.typeGarantie} · {prop.famille.dureeAns} an{prop.famille.dureeAns > 1 ? "s" : ""}
+            {[
+              prop.famille.nbAdultes        > 0 && `${prop.famille.nbAdultes} adulte${prop.famille.nbAdultes > 1 ? "s" : ""}`,
+              prop.famille.nbEnfants        > 0 && `${prop.famille.nbEnfants} enfant${prop.famille.nbEnfants > 1 ? "s" : ""}`,
+              prop.famille.nbPersonnesAgees > 0 && `${prop.famille.nbPersonnesAgees} âgé${prop.famille.nbPersonnesAgees > 1 ? "s" : ""}`,
+              prop.famille.typeGarantie,
+              `${prop.famille.dureeAns} an${prop.famille.dureeAns > 1 ? "s" : ""}`,
+            ].filter(Boolean).join(" · ")}
           </p>
           <p className="font-mono font-semibold text-blue-700">
             {prop.famille.primeEstimee.toLocaleString("fr-FR")} FCFA
@@ -53,11 +57,13 @@ function PropositionDetail({ prop }: { prop: Proposition }) {
         <>
           <p><strong>Entreprise :</strong> {prop.groupe.entreprise}</p>
           <p>
-            {prop.groupe.nbAdultes > 0 && `${prop.groupe.nbAdultes} adulte${prop.groupe.nbAdultes > 1 ? "s" : ""}`}
-            {prop.groupe.nbEnfants > 0 && ` · ${prop.groupe.nbEnfants} enfant${prop.groupe.nbEnfants > 1 ? "s" : ""}`}
-            {prop.groupe.nbPersonnesAgees > 0 && ` · ${prop.groupe.nbPersonnesAgees} âgé${prop.groupe.nbPersonnesAgees > 1 ? "s" : ""}`}
-            {" · "}{prop.groupe.dureeAns} an{prop.groupe.dureeAns > 1 ? "s" : ""}
-            {(prop.groupe.tarifsPersoAdulte != null) && " · Tarifs personnalisés"}
+            {[
+              prop.groupe.nbAdultes        > 0 && `${prop.groupe.nbAdultes} adulte${prop.groupe.nbAdultes > 1 ? "s" : ""}`,
+              prop.groupe.nbEnfants        > 0 && `${prop.groupe.nbEnfants} enfant${prop.groupe.nbEnfants > 1 ? "s" : ""}`,
+              prop.groupe.nbPersonnesAgees > 0 && `${prop.groupe.nbPersonnesAgees} âgé${prop.groupe.nbPersonnesAgees > 1 ? "s" : ""}`,
+              `${prop.groupe.dureeAns} an${prop.groupe.dureeAns > 1 ? "s" : ""}`,
+              prop.groupe.tarifsPersoAdulte != null && "Tarifs personnalisés",
+            ].filter(Boolean).join(" · ")}
           </p>
           <p className="font-mono font-semibold text-blue-700">
             {prop.groupe.primeEstimee.toLocaleString("fr-FR")} FCFA
@@ -77,20 +83,20 @@ function PropositionRow({
   onDelete,
   onConvert,
 }: {
-  prop:           Proposition;
-  isHighlighted:  boolean;
-  onAction:       (id: string, statut: StatutProposition) => void;
-  onDelete:       (id: string) => void;
-  onConvert:      (id: string) => void;
+  prop:          Proposition;
+  isHighlighted: boolean;
+  onAction:      (id: string, statut: StatutProposition) => void;
+  onDelete:      (id: string) => void;
+  onConvert:     (id: string) => void;
 }) {
-  const s = STATUT_STYLES[prop.statut];
-  const isGroupe  = prop.type === "GROUPE";
-  const nom       = prop.famille?.souscripteurNom ?? prop.groupe?.entreprise ?? "—";
-  const prime     = (prop.famille?.primeEstimee ?? prop.groupe?.primeEstimee ?? 0);
+  const s        = STATUT_STYLES[prop.statut];
+  const isGroupe = prop.type === "GROUPE";
+  const nom      = prop.famille?.souscripteurNom ?? prop.groupe?.entreprise ?? "—";
 
   return (
     <div className={`rounded-xl border transition-all ${isHighlighted ? "ring-2 ring-blue-400 border-blue-300 bg-blue-50/30" : "bg-white hover:bg-gray-50/60"}`}>
       <div className="flex items-start gap-4 p-4">
+
         {/* Icône type */}
         <div className={`mt-0.5 p-2.5 rounded-xl shrink-0 ${isGroupe ? "bg-purple-100" : "bg-blue-100"}`}>
           {isGroupe
@@ -140,8 +146,7 @@ function PropositionRow({
             </>
           )}
           {prop.statut === "acceptee" && (
-            <Button size="sm"
-              className="gap-1.5 bg-green-600 hover:bg-green-700 text-white"
+            <Button size="sm" className="gap-1.5 text-white" style={{ background: "#1B5299" }}
               onClick={() => onConvert(prop.id)}>
               <ShieldCheck className="w-3.5 h-3.5" /> Créer la police
             </Button>
@@ -166,24 +171,26 @@ function PropositionRow({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 const FILTRES: { value: StatutProposition | "all"; label: string }[] = [
-  { value: "all",       label: "Toutes"    },
+  { value: "all",       label: "Toutes"     },
   { value: "brouillon", label: "Brouillons" },
-  { value: "envoyee",   label: "Envoyées"  },
-  { value: "acceptee",  label: "Acceptées" },
-  { value: "refusee",   label: "Refusées"  },
-  { value: "convertie", label: "Converties"},
+  { value: "envoyee",   label: "Envoyées"   },
+  { value: "acceptee",  label: "Acceptées"  },
+  { value: "refusee",   label: "Refusées"   },
+  { value: "convertie", label: "Converties" },
 ];
 
 export default function PropositionsPage() {
-  const navigate   = useNavigate();
-  const location   = useLocation();
+  const navigate    = useNavigate();
+  const location    = useLocation();
   const highlightId = (location.state as any)?.highlightId ?? null;
 
-  const [propositions, setPropositions] = useState<Proposition[]>([]);
-  const [filtre,       setFiltre]       = useState<StatutProposition | "all">("all");
-  const [search,       setSearch]       = useState("");
-  const [converting,   setConverting]   = useState<string | null>(null);
-  const [deleteId,     setDeleteId]     = useState<string | null>(null);
+  const [propositions,  setPropositions]  = useState<Proposition[]>([]);
+  const [filtre,        setFiltre]        = useState<StatutProposition | "all">("all");
+  const [search,        setSearch]        = useState("");
+  const [convertProp,   setConvertProp]   = useState<Proposition | null>(null);
+  const [primeOverride, setPrimeOverride] = useState<string>("");
+  const [converting,    setConverting]    = useState(false);
+  const [deleteId,      setDeleteId]      = useState<string | null>(null);
 
   useEffect(() => {
     setPropositions(DataService.getPropositions());
@@ -197,10 +204,7 @@ export default function PropositionsPage() {
       if (filtre !== "all" && p.statut !== filtre) return false;
       if (!q) return true;
       const nom = p.famille?.souscripteurNom ?? p.groupe?.entreprise ?? "";
-      return (
-        nom.toLowerCase().includes(q) ||
-        p.reference.toLowerCase().includes(q)
-      );
+      return nom.toLowerCase().includes(q) || p.reference.toLowerCase().includes(q);
     });
   }, [propositions, filtre, search]);
 
@@ -215,26 +219,69 @@ export default function PropositionsPage() {
     toast.success(labels[statut] ?? "Statut mis à jour");
   };
 
-  const handleConvert = async (id: string) => {
-    setConverting(id);
-    try {
-      const prop = DataService.getPropositionById(id);
-      if (!prop) throw new Error("Proposition introuvable");
+  const openConvertDialog = (id: string) => {
+    const prop = DataService.getPropositionById(id);
+    if (!prop) return;
+    const prime = prop.famille?.primeEstimee ?? prop.groupe?.primeEstimee ?? 0;
+    setPrimeOverride(String(prime));
+    setConvertProp(prop);
+  };
 
-      // Construire le payload police à partir des données de la proposition
-      const policePayload = buildPolicePayload(prop);
-      const police = await DataService.createPolice(policePayload);
+  const handleConvert = async () => {
+    if (!convertProp) return;
+    setConverting(true);
+    try {
+      const primeFinale = Number(primeOverride) || (convertProp.famille?.primeEstimee ?? convertProp.groupe?.primeEstimee ?? 0);
+
+      // 1. Créer la police (backend)
+      const police   = await DataService.createPolice(buildPolicePayload(convertProp, primeFinale));
       const policeId = String(police?.id ?? Date.now());
 
-      // Marquer la proposition comme convertie
-      DataService.updateProposition(id, { statut: "convertie", policeId });
+      // 2. Créer la fiche famille ou groupe liée à la proposition
+      if (convertProp.famille) {
+        const f = convertProp.famille;
+        await DataService.createFamille({
+          principal:           f.souscripteurNom,
+          telephone:           f.souscripteurTel,
+          emailPrincipal:      f.souscripteurEmail,
+          adresse:             f.souscripteurAdresse,
+          typePrincipal:       "adulte",
+          beneficiaires:       [],
+          beneficiairesDetail: [],
+          dateDebut:           f.dateDebut,
+          dureeGarantie:       String(f.dureeAns),
+          prime:               String(primeFinale),
+          statut:              "Actif",
+          propositionRef:      convertProp.reference,
+          nbAdultes:           f.nbAdultes,
+          nbEnfants:           f.nbEnfants,
+          nbPersonnesAgees:    f.nbPersonnesAgees,
+        });
+      } else if (convertProp.groupe) {
+        const g = convertProp.groupe;
+        await DataService.createGroupe({
+          entreprise:    g.entreprise,
+          secteur:       g.secteur,
+          debut:         g.dateDebut,
+          dureeGarantie: String(g.dureeAns),
+          prime:         String(primeFinale),
+          statut:        "Actif",
+          propositionRef: convertProp.reference,
+          employes:      g.nbAdultes + g.nbEnfants + g.nbPersonnesAgees,
+          assures:       g.nbAdultes + g.nbEnfants + g.nbPersonnesAgees,
+        });
+      }
+
+      // 3. Marquer la proposition comme convertie
+      DataService.updateProposition(convertProp.id, { statut: "convertie", policeId });
       reload();
-      toast.success(`Police créée avec succès — ${prop.reference}`);
-      navigate(`/admin/polices`);
+      toast.success(`Police créée — ${convertProp.reference} · ${primeFinale.toLocaleString("fr-FR")} FCFA`);
+      setConvertProp(null);
+      navigate(convertProp.famille ? "/admin/maladie-famille" : "/admin/maladie-groupe");
     } catch (err: any) {
       toast.error(err?.message || "Erreur lors de la création de la police");
     } finally {
-      setConverting(null);
+      setConverting(false);
     }
   };
 
@@ -246,7 +293,6 @@ export default function PropositionsPage() {
     toast.success("Proposition supprimée");
   };
 
-  // Compteurs par statut
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: propositions.length };
     for (const p of propositions) c[p.statut] = (c[p.statut] ?? 0) + 1;
@@ -254,165 +300,268 @@ export default function PropositionsPage() {
   }, [propositions]);
 
   return (
-    <AppLayout subHeader={
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <p className="text-sm font-semibold">
-          Propositions commerciales
-          <span className="ml-2 text-muted-foreground font-normal">({propositions.length})</span>
-        </p>
-        <Button size="sm" onClick={() => navigate("/admin/nouvelle-proposition")}>
-          <Plus className="w-4 h-4 mr-1.5" /> Nouvelle proposition
-        </Button>
-      </div>
-    }>
-
-      {/* Dialogue suppression */}
-      <AlertDialog open={!!deleteId} onOpenChange={v => !v && setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Supprimer la proposition ?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Cette action est irréversible. La proposition sera définitivement supprimée.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={handleDelete}>
-              Supprimer
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <div className="max-w-5xl mx-auto space-y-5 pb-10">
-
-        {/* ── Filtres de statut ── */}
-        <div className="flex flex-wrap gap-2">
-          {FILTRES.map(f => (
-            <button key={f.value}
-              onClick={() => setFiltre(f.value)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
-                filtre === f.value
-                  ? "bg-blue-600 text-white border-blue-600"
-                  : "bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600"
-              }`}>
-              {f.label}
-              {counts[f.value] != null && (
-                <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${filtre === f.value ? "bg-white/20" : "bg-gray-100"}`}>
-                  {counts[f.value] ?? 0}
-                </span>
-              )}
-            </button>
-          ))}
+    <>
+      <AppLayout subHeader={
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <p className="text-sm font-semibold">
+            Propositions commerciales
+            <span className="ml-2 text-muted-foreground font-normal">({propositions.length})</span>
+          </p>
+          <Button size="sm" onClick={() => navigate("/admin/nouvelle-proposition")}>
+            <Plus className="w-4 h-4 mr-1.5" /> Nouvelle proposition
+          </Button>
         </div>
+      }>
 
-        {/* ── Recherche ── */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <Input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Rechercher par nom ou référence…"
-            className="pl-9 pr-9"
-          />
-          {search && (
-            <button onClick={() => setSearch("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
+        {/* Dialogue suppression */}
+        <AlertDialog open={!!deleteId} onOpenChange={v => !v && setDeleteId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Supprimer la proposition ?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Cette action est irréversible. La proposition sera définitivement supprimée.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Annuler</AlertDialogCancel>
+              <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={handleDelete}>
+                Supprimer
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
-        {/* ── Liste ── */}
-        {filtered.length === 0 ? (
-          <Card className="p-12 text-center space-y-3">
-            <FileText className="w-10 h-10 text-gray-300 mx-auto" />
-            <p className="text-muted-foreground text-sm">
-              {search || filtre !== "all"
-                ? "Aucune proposition ne correspond à votre recherche"
-                : "Aucune proposition pour l'instant"}
-            </p>
-            {!search && filtre === "all" && (
-              <Button size="sm" onClick={() => navigate("/admin/nouvelle-proposition")}>
-                <Plus className="w-4 h-4 mr-1.5" /> Créer une proposition
-              </Button>
-            )}
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {filtered.map(prop => (
-              <PropositionRow
-                key={prop.id}
-                prop={prop}
-                isHighlighted={prop.id === highlightId}
-                onAction={handleAction}
-                onDelete={setDeleteId}
-                onConvert={handleConvert}
-              />
+        <div className="max-w-5xl mx-auto space-y-5 pb-10">
+
+          {/* ── Filtres ── */}
+          <div className="flex flex-wrap gap-2">
+            {FILTRES.map(f => (
+              <button key={f.value} onClick={() => setFiltre(f.value)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
+                  filtre === f.value
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600"
+                }`}>
+                {f.label}
+                {counts[f.value] != null && (
+                  <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${filtre === f.value ? "bg-white/20" : "bg-gray-100"}`}>
+                    {counts[f.value] ?? 0}
+                  </span>
+                )}
+              </button>
             ))}
           </div>
-        )}
 
-        {converting && (
-          <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-            <Card className="p-6 flex items-center gap-3">
-              <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
-              <p className="font-medium">Création de la police en cours…</p>
-            </Card>
+          {/* ── Recherche ── */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Rechercher par nom ou référence…"
+              className="pl-9 pr-9"
+            />
+            {search && (
+              <button onClick={() => setSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
-        )}
 
-      </div>
-    </AppLayout>
+          {/* ── Liste ── */}
+          {filtered.length === 0 ? (
+            <Card className="p-12 text-center space-y-3">
+              <FileText className="w-10 h-10 text-gray-300 mx-auto" />
+              <p className="text-muted-foreground text-sm">
+                {search || filtre !== "all"
+                  ? "Aucune proposition ne correspond à votre recherche"
+                  : "Aucune proposition pour l'instant"}
+              </p>
+              {!search && filtre === "all" && (
+                <Button size="sm" onClick={() => navigate("/admin/nouvelle-proposition")}>
+                  <Plus className="w-4 h-4 mr-1.5" /> Créer une proposition
+                </Button>
+              )}
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {filtered.map(prop => (
+                <PropositionRow
+                  key={prop.id}
+                  prop={prop}
+                  isHighlighted={prop.id === highlightId}
+                  onAction={handleAction}
+                  onDelete={setDeleteId}
+                  onConvert={openConvertDialog}
+                />
+              ))}
+            </div>
+          )}
+
+        </div>
+      </AppLayout>
+
+      {/* ── Dialogue de conversion proposition → police ─────────────────────── */}
+      <Dialog open={!!convertProp} onOpenChange={v => !v && setConvertProp(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5" style={{ color: "#1B5299" }} />
+              Créer la police — {convertProp?.reference}
+            </DialogTitle>
+          </DialogHeader>
+
+          {convertProp && (
+            <div className="space-y-5 pt-1">
+
+              {/* Récapitulatif */}
+              <div className="rounded-xl border p-4 space-y-2 bg-gray-50 text-sm">
+                <div className="flex items-center gap-2 mb-1">
+                  {convertProp.type === "FAMILLE"
+                    ? <Users     className="w-4 h-4 text-blue-600"   />
+                    : <Building2 className="w-4 h-4 text-purple-600" />
+                  }
+                  <span className="font-semibold">
+                    {convertProp.famille?.souscripteurNom ?? convertProp.groupe?.entreprise}
+                  </span>
+                  <span className="ml-auto text-xs text-muted-foreground px-2 py-0.5 rounded-full border">
+                    {convertProp.type === "FAMILLE" ? "Famille" : "Groupe"}
+                  </span>
+                </div>
+                {convertProp.famille && (
+                  <p className="text-muted-foreground text-xs">
+                    {[
+                      convertProp.famille.nbAdultes > 0        && `${convertProp.famille.nbAdultes} adulte${convertProp.famille.nbAdultes > 1 ? "s" : ""}`,
+                      convertProp.famille.nbEnfants > 0        && `${convertProp.famille.nbEnfants} enfant${convertProp.famille.nbEnfants > 1 ? "s" : ""}`,
+                      convertProp.famille.nbPersonnesAgees > 0 && `${convertProp.famille.nbPersonnesAgees} âgé${convertProp.famille.nbPersonnesAgees > 1 ? "s" : ""}`,
+                      convertProp.famille.typeGarantie,
+                      `${convertProp.famille.dureeAns} an${convertProp.famille.dureeAns > 1 ? "s" : ""}`,
+                    ].filter(Boolean).join(" · ")}
+                  </p>
+                )}
+                {convertProp.groupe && (
+                  <p className="text-muted-foreground text-xs">
+                    {[
+                      convertProp.groupe.secteur,
+                      `${convertProp.groupe.nbAdultes + convertProp.groupe.nbEnfants + convertProp.groupe.nbPersonnesAgees} assuré(s)`,
+                      `${convertProp.groupe.dureeAns} an${convertProp.groupe.dureeAns > 1 ? "s" : ""}`,
+                    ].filter(Boolean).join(" · ")}
+                  </p>
+                )}
+              </div>
+
+              {/* Prime ajustable */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5 text-sm font-semibold">
+                  <Calculator className="w-4 h-4" style={{ color: "#1B5299" }} />
+                  Prime appliquée à la police
+                  <span className="ml-1 text-xs font-normal text-muted-foreground">(modifiable)</span>
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={primeOverride}
+                    onChange={e => setPrimeOverride(e.target.value)}
+                    className="font-mono text-right text-base font-bold"
+                    style={{ color: "#1B5299" }}
+                  />
+                  <span className="text-sm text-muted-foreground shrink-0">FCFA</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                  <Pencil className="w-3 h-3" />
+                  Issue du calcul tarifaire — ajustable avant validation définitive.
+                </p>
+              </div>
+
+              {/* Note jonction */}
+              <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-800 space-y-1">
+                <p className="font-semibold">Cette action va créer :</p>
+                <ul className="list-disc ml-4 space-y-0.5">
+                  <li>Une <strong>police d'assurance</strong> enregistrée dans le système</li>
+                  <li>
+                    Une fiche{" "}
+                    <strong>
+                      {convertProp.type === "FAMILLE" ? "Maladie Famille" : "Maladie Groupe"}
+                    </strong>{" "}
+                    liée à cette proposition ({convertProp.reference})
+                  </li>
+                </ul>
+              </div>
+
+              {/* Boutons */}
+              <div className="flex gap-3 pt-1">
+                <Button variant="outline" className="flex-1" onClick={() => setConvertProp(null)}>
+                  Annuler
+                </Button>
+                <Button
+                  className="flex-[2] gap-2 text-white"
+                  style={{ background: "#1B5299" }}
+                  disabled={converting || !primeOverride || Number(primeOverride) <= 0}
+                  onClick={handleConvert}
+                >
+                  {converting
+                    ? <><Loader2 className="w-4 h-4 animate-spin" /> Création en cours…</>
+                    : <><ShieldCheck className="w-4 h-4" /> Créer la police</>
+                  }
+                </Button>
+              </div>
+
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
-// ─── Helpers : construction payload police ────────────────────────────────────
+// ─── Helpers : construction payload police ─────────────────────────────────────
 
-function buildPolicePayload(prop: Proposition): any {
+function buildPolicePayload(prop: Proposition, primeFinale: number): any {
   const now = new Date().toISOString().slice(0, 10);
 
   if (prop.famille) {
-    const f = prop.famille;
+    const f       = prop.famille;
     const nbTotal = f.nbAdultes + f.nbEnfants + f.nbPersonnesAgees;
     return {
-      type:             "FAMILLE",
-      souscripteurNom:  f.souscripteurNom,
-      email:            f.souscripteurEmail,
-      telephone:        f.souscripteurTel,
-      adresse:          f.souscripteurAdresse,
-      garantie:         f.typeGarantie,
-      dateDebut:        f.dateDebut || now,
-      dureeGarantie:    String(f.dureeAns),
-      prime:            String(f.primeEstimee),
+      type:              "FAMILLE",
+      souscripteurNom:   f.souscripteurNom,
+      email:             f.souscripteurEmail,
+      telephone:         f.souscripteurTel,
+      adresse:           f.souscripteurAdresse,
+      garantie:          f.typeGarantie,
+      dateDebut:         f.dateDebut || now,
+      dureeGarantie:     String(f.dureeAns),
+      prime:             String(primeFinale),
       tauxRemboursement: f.tauxRemboursement,
-      nbAssures:        nbTotal,
-      propositionRef:   prop.reference,
-      statut:           "Actif",
+      nbAssures:         nbTotal,
+      propositionRef:    prop.reference,
+      statut:            "Actif",
     };
   }
 
   if (prop.groupe) {
-    const g = prop.groupe;
+    const g       = prop.groupe;
     const nbTotal = g.nbAdultes + g.nbEnfants + g.nbPersonnesAgees;
     return {
-      type:               "GROUPE",
-      entreprise:         g.entreprise,
-      secteur:            g.secteur,
-      contactNom:         g.contactNom,
-      email:              g.contactEmail,
-      telephone:          g.contactTel,
-      debut:              g.dateDebut || now,
-      dureeGarantie:      String(g.dureeAns),
-      prime:              String(g.primeEstimee),
-      tauxRemboursement:  g.tauxRemboursement,
-      employes:           nbTotal,
-      assures:            nbTotal,
-      tarifsPersoAdulte:  g.tarifsPersoAdulte,
-      tarifsPersoEnfant:  g.tarifsPersoEnfant,
+      type:                 "GROUPE",
+      entreprise:           g.entreprise,
+      secteur:              g.secteur,
+      contactNom:           g.contactNom,
+      email:                g.contactEmail,
+      telephone:            g.contactTel,
+      debut:                g.dateDebut || now,
+      dureeGarantie:        String(g.dureeAns),
+      prime:                String(primeFinale),
+      tauxRemboursement:    g.tauxRemboursement,
+      employes:             nbTotal,
+      assures:              nbTotal,
+      tarifsPersoAdulte:    g.tarifsPersoAdulte,
+      tarifsPersoEnfant:    g.tarifsPersoEnfant,
       tarifsPersoAdulteAge: g.tarifsPersoAdulteAge,
-      propositionRef:     prop.reference,
-      statut:             "Actif",
+      propositionRef:       prop.reference,
+      statut:               "Actif",
     };
   }
 

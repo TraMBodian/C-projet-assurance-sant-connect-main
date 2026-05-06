@@ -147,36 +147,64 @@ export default function PropositionGroupeForm({ onBack, onSaved }: Props) {
       </Card>
 
       {/* ── Prime estimée (affichée dès que l'offre est renseignée) ── */}
-      {nbTotal > 0 && (
-        <Card className="overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-3 text-white" style={{ background: "#1B5299" }}>
-            <Calculator className="w-4 h-4 shrink-0" />
-            <p className="font-semibold text-sm">Prime estimée</p>
-            {tarifsPerso && (
-              <span className="ml-2 text-xs bg-white/20 px-2 py-0.5 rounded-full">
-                Tarifs personnalisés actifs
-              </span>
-            )}
-            <span className="ml-auto text-xs opacity-80">indicative — sujet à validation</span>
-          </div>
-          <div className="p-4 space-y-2">
-            {[
-              { label: `Adultes × ${offre.adultes}`,                value: offre.adultes        * (tarifsPerso?.primeAdulte    ?? getTarifs().primeAdulte)   * dureeAns, show: offre.adultes > 0 },
-              { label: `Enfants × ${offre.enfants}`,                value: offre.enfants        * (tarifsPerso?.primeEnfant    ?? getTarifs().primeEnfant)   * dureeAns, show: offre.enfants > 0 },
-              { label: `Personnes âgées × ${offre.personnesAgees}`, value: offre.personnesAgees * (tarifsPerso?.primeAdulteAge ?? getTarifs().primeAdulteAge) * dureeAns, show: offre.personnesAgees > 0 },
-            ].filter(r => r.show).map(r => (
-              <div key={r.label} className="flex justify-between text-sm">
-                <span className="text-muted-foreground">{r.label}</span>
-                <span className="font-mono">{Math.round(r.value).toLocaleString("fr-FR")} FCFA</span>
-              </div>
-            ))}
-            <div className="flex justify-between items-center -mx-4 -mb-4 px-4 py-3 mt-2 text-white" style={{ background: "#1B5299" }}>
-              <span className="font-bold">TOTAL ESTIMÉ ({dureeAns} an{dureeAns > 1 ? "s" : ""})</span>
-              <span className="font-bold text-lg font-mono">{primeEstimee.toLocaleString("fr-FR")} FCFA</span>
+      {nbTotal > 0 && (() => {
+        const t   = getTarifs();
+        const pA  = offre.adultes        * (tarifsPerso?.primeAdulte    ?? t.primeAdulte);
+        const pE  = offre.enfants        * (tarifsPerso?.primeEnfant    ?? t.primeEnfant);
+        const pAg = offre.personnesAgees * (tarifsPerso?.primeAdulteAge ?? t.primeAdulteAge);
+        const primeNette = pA + pE + pAg;
+        const cp    = Math.round(primeNette * t.tauxCP   / 100);
+        const taxes = Math.round((primeNette + cp) * t.tauxTaxe / 100);
+        const sousTotal = primeNette + cp + taxes;
+        return (
+          <Card className="overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-3 text-white" style={{ background: "#1B5299" }}>
+              <Calculator className="w-4 h-4 shrink-0" />
+              <p className="font-semibold text-sm">Prime estimée</p>
+              {tarifsPerso && (
+                <span className="ml-2 text-xs bg-white/20 px-2 py-0.5 rounded-full">
+                  Tarifs personnalisés
+                </span>
+              )}
+              <span className="ml-auto text-xs opacity-80">indicative — sujet à validation</span>
             </div>
-          </div>
-        </Card>
-      )}
+            <div className="divide-y">
+              {[
+                { label: `Adultes × ${offre.adultes}`,                value: pA,  show: offre.adultes > 0 },
+                { label: `Enfants × ${offre.enfants}`,                value: pE,  show: offre.enfants > 0 },
+                { label: `Personnes âgées × ${offre.personnesAgees}`, value: pAg, show: offre.personnesAgees > 0 },
+              ].filter(r => r.show).map(r => (
+                <div key={r.label} className="flex justify-between px-4 py-2.5 text-sm">
+                  <span className="text-muted-foreground">{r.label}</span>
+                  <span className="font-mono">{Math.round(r.value).toLocaleString("fr-FR")} FCFA</span>
+                </div>
+              ))}
+              <div className="flex justify-between px-4 py-2.5 text-sm bg-blue-50 font-semibold">
+                <span>Prime nette</span>
+                <span className="font-mono text-blue-700">{Math.round(primeNette).toLocaleString("fr-FR")} FCFA</span>
+              </div>
+              <div className="flex justify-between px-4 py-2.5 text-sm">
+                <span className="text-muted-foreground">Coût de police ({t.tauxCP} %)</span>
+                <span className="font-mono">{cp.toLocaleString("fr-FR")} FCFA</span>
+              </div>
+              <div className="flex justify-between px-4 py-2.5 text-sm">
+                <span className="text-muted-foreground">Taxes ({t.tauxTaxe} %)</span>
+                <span className="font-mono">{taxes.toLocaleString("fr-FR")} FCFA</span>
+              </div>
+              {dureeAns > 1 && (
+                <div className="flex justify-between px-4 py-2.5 text-sm">
+                  <span className="text-muted-foreground">Sous-total (1 an)</span>
+                  <span className="font-mono">{Math.round(sousTotal).toLocaleString("fr-FR")} FCFA</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center px-4 py-3 text-white font-bold" style={{ background: "#1B5299" }}>
+                <span>TOTAL ESTIMÉ ({dureeAns} an{dureeAns > 1 ? "s" : ""})</span>
+                <span className="text-lg font-mono">{primeEstimee.toLocaleString("fr-FR")} FCFA</span>
+              </div>
+            </div>
+          </Card>
+        );
+      })()}
 
       {/* ── Entreprise ── */}
       <Card className="p-6 space-y-4">

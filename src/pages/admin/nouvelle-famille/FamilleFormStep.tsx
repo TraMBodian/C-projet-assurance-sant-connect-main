@@ -49,9 +49,7 @@ export default function FamilleFormStep({ questAnswers, onBack }: Props) {
 
   const [beneficiaires, setBeneficiaires] = useState<Beneficiaire[]>([newBeneficiaire()]);
 
-  const [tarifs, setTarifs] = useState<TarifSettings>(() => ({
-    ...getTarifs(), primeEnfant: 0, primeAdulte: 0, primeAdulteAge: 0,
-  }));
+  const [tarifs, setTarifs] = useState<TarifSettings>(getTarifs);
 
   const [territorialite, setTerritorialite] = useState({
     senegal: "", afrique: "", resteMonde: "",
