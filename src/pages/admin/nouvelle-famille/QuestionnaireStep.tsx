@@ -44,9 +44,11 @@ interface Props {
   answers:    Record<string, string>;
   onChange:   (answers: Record<string, string>) => void;
   onContinue: () => void;
+  onBack?:    () => void;
+  embedded?:  boolean;
 }
 
-export default function QuestionnaireStep({ answers, onChange, onContinue }: Props) {
+export default function QuestionnaireStep({ answers, onChange, onContinue, onBack, embedded }: Props) {
   const navigate = useNavigate();
 
   const setAnswer = (key: string, val: string) =>
@@ -103,26 +105,32 @@ export default function QuestionnaireStep({ answers, onChange, onContinue }: Pro
     }
   };
 
-  return (
-    <AppLayout subHeader={
-      <Button size="sm" onClick={() => navigate("/admin/maladie-famille")}>
-        <ArrowLeft className="w-4 h-4 mr-2" /> Retour
-      </Button>
-    }>
-      <div className="max-w-4xl mx-auto space-y-5 pb-10">
+  const handleBack = () => {
+    if (onBack) onBack();
+    else navigate("/admin/maladie-famille");
+  };
 
-        {/* En-tête étape */}
-        <div className="rounded-2xl p-5 text-white" style={{ background: "#1B5299" }}>
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
-              <span className="text-white font-black text-sm">1/2</span>
-            </div>
-            <div>
-              <h1 className="text-lg font-bold">Questionnaire Médical</h1>
-              <p className="text-white/80 text-xs">Étape 1 — À compléter avant la souscription · Répondre par OUI ou NON</p>
-            </div>
+  const inner = (
+    <div className="max-w-4xl mx-auto space-y-5 pb-10">
+
+      {/* En-tête étape */}
+      <div className="rounded-2xl p-5 text-white" style={{ background: "#1B5299" }}>
+        <div className="flex items-center gap-3">
+          {embedded && (
+            <button type="button" onClick={handleBack}
+              className="p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors">
+              <ArrowLeft className="w-4 h-4 text-white" />
+            </button>
+          )}
+          <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+            <span className="text-white font-black text-sm">1/3</span>
+          </div>
+          <div>
+            <h1 className="text-lg font-bold">Questionnaire Médical</h1>
+            <p className="text-white/80 text-xs">Étape 1 — À compléter avant la proposition · Répondre par OUI ou NON</p>
           </div>
         </div>
+      </div>
 
         {/* Tableau */}
         <Card className="overflow-hidden">
@@ -200,16 +208,27 @@ export default function QuestionnaireStep({ answers, onChange, onContinue }: Pro
             Imprimer / Télécharger
           </Button>
           <div className="flex gap-3">
-            <Button variant="destructive" onClick={() => navigate("/admin/maladie-famille")}>
+            <Button variant="destructive" onClick={handleBack}>
               Annuler
             </Button>
             <Button onClick={onContinue} style={{ background: "#1B5299" }}>
-              Continuer vers la demande →
+              Continuer vers la proposition →
             </Button>
           </div>
         </div>
 
       </div>
+  );
+
+  if (embedded) return inner;
+
+  return (
+    <AppLayout subHeader={
+      <Button size="sm" onClick={handleBack}>
+        <ArrowLeft className="w-4 h-4 mr-2" /> Retour
+      </Button>
+    }>
+      {inner}
     </AppLayout>
   );
 }

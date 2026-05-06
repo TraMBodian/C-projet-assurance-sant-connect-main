@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
-import { Card } from "@/components/ui/card";
+
 import { ArrowLeft, Users, Building2 } from "@/components/ui/Icons";
 import { Button } from "@/components/ui/button";
 import PropositionFamilleForm from "./nouvelle-proposition/PropositionFamilleForm";
 import PropositionGroupeForm  from "./nouvelle-proposition/PropositionGroupeForm";
+import QuestionnaireStep      from "./nouvelle-famille/QuestionnaireStep";
 import type { TypeProposition } from "./nouvelle-proposition/types";
+
+type Step = "type" | "questionnaire" | "form";
 
 // ─── Sélecteur de type ────────────────────────────────────────────────────────
 
@@ -63,43 +66,75 @@ function TypeSelector({ onSelect }: { onSelect: (t: TypeProposition) => void }) 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function NewPropositionPage() {
-  const navigate  = useNavigate();
-  const [type, setType] = useState<TypeProposition | null>(null);
+  const navigate = useNavigate();
+
+  const [type,                setType]                = useState<TypeProposition | null>(null);
+  const [step,                setStep]                = useState<Step>("type");
+  const [questionnaireAnswers, setQuestionnaireAnswers] = useState<Record<string, string>>({});
+
+  const handleSelectType = (t: TypeProposition) => {
+    setType(t);
+    setStep(t === "FAMILLE" ? "questionnaire" : "form");
+  };
+
+  const handleBack = () => {
+    if (step === "questionnaire") { setType(null); setStep("type"); }
+    else if (step === "form" && type === "FAMILLE") setStep("questionnaire");
+    else { setType(null); setStep("type"); }
+  };
 
   const handleSaved = (propId: string) => {
     navigate("/admin/propositions", { state: { highlightId: propId } });
   };
 
+  const subHeaderLabel =
+    step === "questionnaire" ? "Questionnaire médical — Famille"
+    : type === "FAMILLE"     ? "Proposition Famille"
+    : type === "GROUPE"      ? "Proposition Groupe"
+    : null;
+
   return (
     <AppLayout subHeader={
       <div className="flex items-center gap-3">
-        <Button size="sm" variant="ghost" onClick={() => (type ? setType(null) : navigate(-1))}>
+        <Button size="sm" variant="ghost" onClick={() => (step !== "type" ? handleBack() : navigate(-1))}>
           <ArrowLeft className="w-4 h-4 mr-1.5" />
-          {type ? "Changer de type" : "Retour"}
+          {step !== "type" ? "Retour" : "Quitter"}
         </Button>
-        {type && (
-          <span className="text-sm text-muted-foreground">
-            Proposition {type === "FAMILLE" ? "Famille" : "Groupe"}
-          </span>
+        {subHeaderLabel && (
+          <span className="text-sm text-muted-foreground">{subHeaderLabel}</span>
         )}
       </div>
     }>
       <div className="max-w-5xl mx-auto pb-10">
-        {!type && <TypeSelector onSelect={setType} />}
 
-        {type === "FAMILLE" && (
+        {step === "type" && (
+          <TypeSelector onSelect={handleSelectType} />
+        )}
+
+        {step === "questionnaire" && type === "FAMILLE" && (
+          <QuestionnaireStep
+            embedded
+            answers={questionnaireAnswers}
+            onChange={setQuestionnaireAnswers}
+            onBack={() => { setType(null); setStep("type"); }}
+            onContinue={() => setStep("form")}
+          />
+        )}
+
+        {step === "form" && type === "FAMILLE" && (
           <PropositionFamilleForm
-            onBack={() => setType(null)}
+            onBack={() => setStep("questionnaire")}
             onSaved={handleSaved}
           />
         )}
 
-        {type === "GROUPE" && (
+        {step === "form" && type === "GROUPE" && (
           <PropositionGroupeForm
-            onBack={() => setType(null)}
+            onBack={() => { setType(null); setStep("type"); }}
             onSaved={handleSaved}
           />
         )}
+
       </div>
     </AppLayout>
   );
