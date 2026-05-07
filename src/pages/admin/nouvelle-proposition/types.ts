@@ -36,6 +36,7 @@ export interface PropositionGroupeData {
   nbAdultes:           number;
   nbEnfants:           number;
   nbPersonnesAgees:    number;
+  typeGarantie:        'Standard' | 'Confort' | 'Premium';
   dureeAns:            number;
   dateDebut:           string;
   primeEstimee:        number;

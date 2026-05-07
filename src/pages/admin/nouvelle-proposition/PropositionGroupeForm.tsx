@@ -4,7 +4,7 @@ import { Input }    from "@/components/ui/input";
 import { Label }    from "@/components/ui/label";
 import { Card }     from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save, Calculator, Building2, User, FileText } from "@/components/ui/Icons";
+import { ArrowLeft, Save, Calculator, Building2, User, FileText, Shield, Star, Zap } from "@/components/ui/Icons";
 import { toast } from "sonner";
 import { getTarifs } from "@/services/tarifService";
 import { DataService } from "@/services/dataService";
@@ -17,17 +17,58 @@ import type { PropositionGroupeData } from "./types";
 
 const DUREES = [1, 2, 3];
 
+const GARANTIE_MULT: Record<string, number> = {
+  Standard: 1.00,
+  Confort:  1.25,
+  Premium:  1.60,
+};
+
+const GARANTIES = [
+  {
+    id:    "Standard" as const,
+    label: "Standard",
+    desc:  "Couverture essentielle",
+    icon:  Shield,
+    color: "border-blue-300 bg-blue-50/60 text-blue-700",
+    ring:  "ring-blue-500",
+    badge: "bg-blue-100 text-blue-800",
+    mult:  "×1.00",
+  },
+  {
+    id:    "Confort" as const,
+    label: "Confort",
+    desc:  "Couverture étendue",
+    icon:  Star,
+    color: "border-indigo-300 bg-indigo-50/60 text-indigo-700",
+    ring:  "ring-indigo-500",
+    badge: "bg-indigo-100 text-indigo-800",
+    mult:  "×1.25",
+  },
+  {
+    id:    "Premium" as const,
+    label: "Premium",
+    desc:  "Couverture maximale",
+    icon:  Zap,
+    color: "border-amber-400 bg-amber-50/60 text-amber-700",
+    ring:  "ring-amber-500",
+    badge: "bg-amber-100 text-amber-800",
+    mult:  "×1.60",
+  },
+];
+
 // ─── Calcul prime estimée ─────────────────────────────────────────────────────
 
 function calcPrimeGroupe(
   offre: OffrePopulation,
   tarifsPerso: TarifsGroupe | null,
+  typeGarantie: string,
   dureeAns: number,
 ): number {
-  const t = getTarifs();
-  const pa  = tarifsPerso?.primeAdulte    ?? t.primeAdulte;
-  const pe  = tarifsPerso?.primeEnfant    ?? t.primeEnfant;
-  const paa = tarifsPerso?.primeAdulteAge ?? t.primeAdulteAge;
+  const t    = getTarifs();
+  const mult = GARANTIE_MULT[typeGarantie] ?? 1;
+  const pa  = (tarifsPerso?.primeAdulte    ?? t.primeAdulte)   * mult;
+  const pe  = (tarifsPerso?.primeEnfant    ?? t.primeEnfant)   * mult;
+  const paa = (tarifsPerso?.primeAdulteAge ?? t.primeAdulteAge) * mult;
   const primeNette = offre.adultes * pa + offre.enfants * pe + offre.personnesAgees * paa;
   const cp    = Math.round(primeNette * t.tauxCP   / 100);
   const taxes = Math.round((primeNette + cp) * t.tauxTaxe / 100);
@@ -46,18 +87,16 @@ interface Props {
 export default function PropositionGroupeForm({ onBack, onSaved }: Props) {
   const [isSaving, setIsSaving] = useState(false);
 
-  // Offre population + tarifs personnalisés (vient de OffreStep embedded)
-  const [offre,       setOffre]       = useState<OffrePopulation>(OFFRE_VIDE);
-  const [tarifsPerso, setTarifsPerso] = useState<TarifsGroupe | null>(null);
+  const [offre,        setOffre]        = useState<OffrePopulation>(OFFRE_VIDE);
+  const [tarifsPerso,  setTarifsPerso]  = useState<TarifsGroupe | null>(null);
+  const [typeGarantie, setTypeGarantie] = useState<'Standard' | 'Confort' | 'Premium'>("Standard");
 
-  // Infos entreprise
-  const [entreprise,  setEntreprise]  = useState("");
-  const [secteur,     setSecteur]     = useState("");
-  const [contactNom,  setContactNom]  = useState("");
-  const [contactEmail,setContactEmail]= useState("");
-  const [contactTel,  setContactTel]  = useState("");
+  const [entreprise,   setEntreprise]   = useState("");
+  const [secteur,      setSecteur]      = useState("");
+  const [contactNom,   setContactNom]   = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactTel,   setContactTel]   = useState("");
 
-  // Conditions
   const [dureeAns,          setDureeAns]          = useState(1);
   const [dateDebut,         setDateDebut]         = useState("");
   const [tauxRemboursement, setTauxRemboursement] = useState(80);
@@ -66,8 +105,8 @@ export default function PropositionGroupeForm({ onBack, onSaved }: Props) {
   const nbTotal = offre.adultes + offre.enfants + offre.personnesAgees;
 
   const primeEstimee = useMemo(
-    () => calcPrimeGroupe(offre, tarifsPerso, dureeAns),
-    [offre, tarifsPerso, dureeAns],
+    () => calcPrimeGroupe(offre, tarifsPerso, typeGarantie, dureeAns),
+    [offre, tarifsPerso, typeGarantie, dureeAns],
   );
 
   const handleSave = async (statut: "brouillon" | "envoyee") => {
@@ -90,6 +129,7 @@ export default function PropositionGroupeForm({ onBack, onSaved }: Props) {
         nbAdultes:           offre.adultes,
         nbEnfants:           offre.enfants,
         nbPersonnesAgees:    offre.personnesAgees,
+        typeGarantie,
         dureeAns,
         dateDebut,
         primeEstimee,
@@ -134,6 +174,46 @@ export default function PropositionGroupeForm({ onBack, onSaved }: Props) {
         </div>
       </div>
 
+      {/* ── Formule de garantie ── */}
+      <Card className="p-5 space-y-3">
+        <div className="flex items-center justify-between border-b pb-2">
+          <h3 className="font-semibold text-base">Formule de garantie</h3>
+          <span className="text-xs text-muted-foreground">Sélectionnez le niveau de couverture</span>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {GARANTIES.map(g => {
+            const Icon = g.icon;
+            const selected = typeGarantie === g.id;
+            return (
+              <button
+                key={g.id}
+                type="button"
+                onClick={() => setTypeGarantie(g.id)}
+                className={`relative flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all text-center ${
+                  selected
+                    ? `${g.color} ring-2 ${g.ring} ring-offset-1`
+                    : "border-gray-200 bg-white hover:border-gray-300 text-gray-500"
+                }`}
+              >
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${selected ? "bg-white/70" : "bg-gray-100"}`}>
+                  <Icon className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">{g.label}</p>
+                  <p className="text-xs opacity-70 mt-0.5">{g.desc}</p>
+                </div>
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${selected ? g.badge : "bg-gray-100 text-gray-500"}`}>
+                  {g.mult}
+                </span>
+                {selected && (
+                  <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-current opacity-70" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </Card>
+
       {/* ── Offre population (OffreStep embarqué) ── */}
       <Card className="overflow-hidden">
         <OffreStep
@@ -146,12 +226,13 @@ export default function PropositionGroupeForm({ onBack, onSaved }: Props) {
         />
       </Card>
 
-      {/* ── Prime estimée (affichée dès que l'offre est renseignée) ── */}
+      {/* ── Prime estimée ── */}
       {nbTotal > 0 && (() => {
-        const t   = getTarifs();
-        const pA  = offre.adultes        * (tarifsPerso?.primeAdulte    ?? t.primeAdulte);
-        const pE  = offre.enfants        * (tarifsPerso?.primeEnfant    ?? t.primeEnfant);
-        const pAg = offre.personnesAgees * (tarifsPerso?.primeAdulteAge ?? t.primeAdulteAge);
+        const t    = getTarifs();
+        const mult = GARANTIE_MULT[typeGarantie] ?? 1;
+        const pA  = offre.adultes        * (tarifsPerso?.primeAdulte    ?? t.primeAdulte)   * mult;
+        const pE  = offre.enfants        * (tarifsPerso?.primeEnfant    ?? t.primeEnfant)   * mult;
+        const pAg = offre.personnesAgees * (tarifsPerso?.primeAdulteAge ?? t.primeAdulteAge) * mult;
         const primeNette = pA + pE + pAg;
         const cp    = Math.round(primeNette * t.tauxCP   / 100);
         const taxes = Math.round((primeNette + cp) * t.tauxTaxe / 100);
@@ -160,7 +241,7 @@ export default function PropositionGroupeForm({ onBack, onSaved }: Props) {
           <Card className="overflow-hidden">
             <div className="flex items-center gap-2 px-4 py-3 text-white" style={{ background: "#1B5299" }}>
               <Calculator className="w-4 h-4 shrink-0" />
-              <p className="font-semibold text-sm">Prime estimée</p>
+              <p className="font-semibold text-sm">Prime estimée — {typeGarantie}</p>
               {tarifsPerso && (
                 <span className="ml-2 text-xs bg-white/20 px-2 py-0.5 rounded-full">
                   Tarifs personnalisés

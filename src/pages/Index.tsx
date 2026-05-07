@@ -137,6 +137,13 @@ const Index = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [navScrolled, setNavScrolled] = useState(false);
   const scrollRef  = useRef<HTMLDivElement>(null);
+
+  const scrollToSection = (id: string) => {
+    const el = document.getElementById(id);
+    if (el && scrollRef.current) {
+      scrollRef.current.scrollTo({ top: el.offsetTop - 80, behavior: "smooth" });
+    }
+  };
   const statsRef   = useRef(null);
   const statsInView = useInView(statsRef, { once: true, margin: "-80px" });
 
@@ -200,8 +207,8 @@ const Index = () => {
             <div className="hidden md:flex items-center gap-0.5">
               {navScrolled ? (
                 <>
-                  <a href="#features"     className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50">Fonctionnalités</a>
-                  <a href="#testimonials" className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50">Témoignages</a>
+                  <button onClick={() => scrollToSection("features")}     className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50">Fonctionnalités</button>
+                  <button onClick={() => scrollToSection("testimonials")} className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50">Témoignages</button>
                   <button onClick={() => navigate('/contact')} className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50">Contact</button>
                   <div className="w-px h-5 mx-1.5 bg-gray-200" />
                   <button onClick={() => navigate('/login')} className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all text-gray-700 hover:text-blue-600 hover:bg-blue-50">Connexion</button>
@@ -209,8 +216,8 @@ const Index = () => {
                 </>
               ) : (
                 <>
-                  <a href="#features"     className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-white/90 hover:text-white hover:bg-white/20">Fonctionnalités</a>
-                  <a href="#testimonials" className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-white/90 hover:text-white hover:bg-white/20">Témoignages</a>
+                  <button onClick={() => scrollToSection("features")}     className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-white/90 hover:text-white hover:bg-white/20">Fonctionnalités</button>
+                  <button onClick={() => scrollToSection("testimonials")} className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-white/90 hover:text-white hover:bg-white/20">Témoignages</button>
                   <button onClick={() => navigate('/contact')} className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-white/90 hover:text-white hover:bg-white/20">Contact</button>
                   <div className="w-px h-5 mx-1.5 bg-white/30" />
                   <button onClick={() => navigate('/login')} className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all text-white/90 hover:text-white hover:bg-white/20">Connexion</button>
@@ -229,8 +236,8 @@ const Index = () => {
             <div className={`md:hidden py-3 space-y-1 border-t ${navScrolled ? "border-gray-100" : "border-white/20"}`}>
               {navScrolled ? (
                 <>
-                  <a href="#features"     className="block px-4 py-2.5 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-medium text-sm">Fonctionnalités</a>
-                  <a href="#testimonials" className="block px-4 py-2.5 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-medium text-sm">Témoignages</a>
+                  <button onClick={() => { scrollToSection("features"); setMobileMenuOpen(false); }}     className="w-full text-left block px-4 py-2.5 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-medium text-sm">Fonctionnalités</button>
+                  <button onClick={() => { scrollToSection("testimonials"); setMobileMenuOpen(false); }} className="w-full text-left block px-4 py-2.5 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-medium text-sm">Témoignages</button>
                   <button onClick={() => navigate('/contact')} className="w-full text-left px-4 py-2.5 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-medium text-sm">Contact</button>
                   <div className="border-t border-gray-100 my-2" />
                   <Button onClick={() => navigate('/login')} variant="outline" className="w-full">Connexion</Button>
@@ -238,8 +245,8 @@ const Index = () => {
                 </>
               ) : (
                 <>
-                  <a href="#features"     className="block px-4 py-2.5 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors font-medium text-sm">Fonctionnalités</a>
-                  <a href="#testimonials" className="block px-4 py-2.5 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors font-medium text-sm">Témoignages</a>
+                  <button onClick={() => { scrollToSection("features"); setMobileMenuOpen(false); }}     className="w-full text-left block px-4 py-2.5 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors font-medium text-sm">Fonctionnalités</button>
+                  <button onClick={() => { scrollToSection("testimonials"); setMobileMenuOpen(false); }} className="w-full text-left block px-4 py-2.5 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors font-medium text-sm">Témoignages</button>
                   <button onClick={() => navigate('/contact')} className="w-full text-left px-4 py-2.5 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors font-medium text-sm">Contact</button>
                   <div className="border-t border-white/20 my-2" />
                   <Button onClick={() => navigate('/login')} variant="outline" className="w-full border-white/30 text-white hover:bg-white/10">Connexion</Button>
@@ -378,11 +385,11 @@ const Index = () => {
 
       {/* Benefits Section */}
       <section className="py-20 -mt-10 relative z-30 rounded-t-[50px]" style={{ backgroundColor: '#E8F4F8' }}>
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-6 md:px-10">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="text-4xl font-bold mb-6">Pourquoi choisir notre plateforme ?</h2>
-              <div className="space-y-4">
+              <h2 className="text-4xl font-bold mb-5">Pourquoi choisir notre plateforme ?</h2>
+              <div className="space-y-1">
                 {[
                   "Interface intuitive et moderne",
                   "Gestion complète des polices et sinistres",
@@ -391,11 +398,11 @@ const Index = () => {
                   "Rapports et analyses détaillés",
                   "Support client réactif 24/7"
                 ].map((benefit, idx) => (
-                  <div key={idx} className="flex items-center gap-4 p-4 rounded-lg hover:bg-gray-50 transition-colors">
-                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <CheckCircle2 className="w-5 h-5 text-green-600" />
+                  <div key={idx} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100/70 transition-colors">
+                    <div className="w-7 h-7 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <CheckCircle2 className="w-4 h-4 text-green-600" />
                     </div>
-                    <span className="text-lg text-gray-700">{benefit}</span>
+                    <span className="text-base text-gray-700">{benefit}</span>
                   </div>
                 ))}
               </div>
@@ -415,7 +422,7 @@ const Index = () => {
 
       {/* Testimonials */}
       <section id="testimonials" className="py-20 -mt-10 relative z-40 rounded-t-[50px] scroll-mt-20" style={{ backgroundColor: '#F0F8FB' }}>
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-6 md:px-10">
           <div className="text-center mb-16">
             <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-600 mb-3">Témoignages</span>
             <h2 className="text-4xl font-bold mb-4 text-gray-900">Ce que disent nos clients</h2>
@@ -452,7 +459,7 @@ const Index = () => {
 
       {/* Registration CTA Section */}
       <section className="py-20 -mt-10 relative z-50 rounded-t-[50px]" style={{ backgroundColor: '#E8F4F8' }}>
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-6 md:px-10">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold mb-6 text-gray-900">Rejoignez notre plateforme</h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">Créez votre compte en tant que prestataire ou client</p>
@@ -531,7 +538,7 @@ const Index = () => {
 
       {/* Footer */}
       <footer id="contact" className="bg-gray-900 text-gray-300 py-8 relative z-50 scroll-mt-20">
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-6 md:px-10">
           <div className="grid md:grid-cols-5 gap-6 mb-6">
             <div>
               <div className="flex items-center gap-2 mb-4">
