@@ -16,8 +16,12 @@ export interface PropositionFamilleData {
   typeGarantie:        'Standard' | 'Confort' | 'Premium';
   dureeAns:            number;
   dateDebut:           string;
-  primeEstimee:        number;   // calculée côté front, indicative
+  primeEstimee:        number;
   tauxRemboursement:   number;
+  // Tarifs personnalisés (null = tarifs globaux)
+  tarifsPersoAdulte:    number | null;
+  tarifsPersoEnfant:    number | null;
+  tarifsPersoAdulteAge: number | null;
   observations:        string;
 }
 

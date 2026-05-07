@@ -135,6 +135,7 @@ const Index = () => {
   const navigate = useNavigate();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [navScrolled, setNavScrolled] = useState(false);
   const scrollRef  = useRef<HTMLDivElement>(null);
   const statsRef   = useRef(null);
   const statsInView = useInView(statsRef, { once: true, margin: "-80px" });
@@ -168,6 +169,14 @@ const Index = () => {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onScroll = () => setNavScrolled(el.scrollTop > 80);
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+
   const testimonials = [
     { name: "Aïssatou Diallo", role: "Directrice des Ressources Humaines", text: "Depuis que nous utilisons cette plateforme, la gestion de nos 200 assurés est devenue un jeu d'enfant. Gain de temps énorme.", rating: 5 },
     { name: "Mamadou Ndiaye", role: "Gérant, Cabinet Médical Dakar", text: "Interface claire, remboursements traités en moins de 48 h. Nos patients sont très satisfaits du service.", rating: 5 },
@@ -177,7 +186,11 @@ const Index = () => {
   return (
     <div ref={scrollRef} className="min-h-screen" style={{ backgroundColor: '#E8F4F8', overflowY: 'auto', height: '100vh' }}>
       {/* Navbar */}
-      <nav className="fixed z-[100] top-3 left-1/2 -translate-x-1/2 w-[min(860px,calc(100vw-2rem))] bg-white/15 backdrop-blur-md border border-white/30 rounded-2xl transition-all duration-300">
+      <nav className={`fixed z-[100] top-3 left-1/2 -translate-x-1/2 w-[min(860px,calc(100vw-2rem))] backdrop-blur-md border rounded-2xl transition-all duration-300 ${
+        navScrolled
+          ? "bg-white/98 border-gray-200 shadow-lg"
+          : "bg-white/15 border-white/30"
+      }`}>
         <div className="px-4 xl:px-5">
           <div className="flex items-center justify-between h-12">
             <div className="flex items-center group cursor-pointer shrink-0" onClick={() => navigate('/')}>
@@ -185,27 +198,54 @@ const Index = () => {
             </div>
 
             <div className="hidden md:flex items-center gap-0.5">
-              <a href="#features"     className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-white/90 hover:text-white hover:bg-white/20">Fonctionnalités</a>
-              <a href="#testimonials" className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-white/90 hover:text-white hover:bg-white/20">Témoignages</a>
-              <button onClick={() => navigate('/contact')} className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-white/90 hover:text-white hover:bg-white/20">Contact</button>
-              <div className="w-px h-5 mx-1.5 bg-white/30"></div>
-              <button onClick={() => navigate('/login')} className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all text-white/90 hover:text-white hover:bg-white/20">Connexion</button>
-              <button onClick={() => navigate('/login')} className="ml-1.5 px-4 py-1.5 bg-white text-blue-700 text-sm font-semibold rounded-xl shadow hover:bg-blue-50 transition-colors whitespace-nowrap">Commencer</button>
+              {navScrolled ? (
+                <>
+                  <a href="#features"     className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50">Fonctionnalités</a>
+                  <a href="#testimonials" className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50">Témoignages</a>
+                  <button onClick={() => navigate('/contact')} className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50">Contact</button>
+                  <div className="w-px h-5 mx-1.5 bg-gray-200" />
+                  <button onClick={() => navigate('/login')} className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all text-gray-700 hover:text-blue-600 hover:bg-blue-50">Connexion</button>
+                  <button onClick={() => navigate('/login')} className="ml-1.5 px-4 py-1.5 bg-blue-600 text-white text-sm font-semibold rounded-xl shadow hover:bg-blue-700 transition-colors whitespace-nowrap">Commencer</button>
+                </>
+              ) : (
+                <>
+                  <a href="#features"     className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-white/90 hover:text-white hover:bg-white/20">Fonctionnalités</a>
+                  <a href="#testimonials" className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-white/90 hover:text-white hover:bg-white/20">Témoignages</a>
+                  <button onClick={() => navigate('/contact')} className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-white/90 hover:text-white hover:bg-white/20">Contact</button>
+                  <div className="w-px h-5 mx-1.5 bg-white/30" />
+                  <button onClick={() => navigate('/login')} className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all text-white/90 hover:text-white hover:bg-white/20">Connexion</button>
+                  <button onClick={() => navigate('/login')} className="ml-1.5 px-4 py-1.5 bg-white text-blue-700 text-sm font-semibold rounded-xl shadow hover:bg-blue-50 transition-colors whitespace-nowrap">Commencer</button>
+                </>
+              )}
             </div>
 
-            <button className="md:hidden p-2 hover:bg-white/20 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-              <Menu className="w-6 h-6 text-white" />
+            <button className={`md:hidden p-2 rounded-lg transition-colors ${navScrolled ? "text-gray-700 hover:bg-gray-100" : "text-white hover:bg-white/20"}`}
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+              <Menu className="w-6 h-6" />
             </button>
           </div>
 
           {mobileMenuOpen && (
-            <div className="md:hidden py-3 space-y-1 border-t border-white/20">
-              <a href="#features"     className="block px-4 py-2.5 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors font-medium text-sm">Fonctionnalités</a>
-              <a href="#testimonials" className="block px-4 py-2.5 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors font-medium text-sm">Témoignages</a>
-              <button onClick={() => navigate('/contact')} className="w-full text-left px-4 py-2.5 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors font-medium text-sm">Contact</button>
-              <div className="border-t border-white/20 my-2" />
-              <Button onClick={() => navigate('/login')} variant="outline" className="w-full border-white/30 text-white hover:bg-white/10">Connexion</Button>
-              <Button onClick={() => navigate('/login')} className="w-full bg-white text-blue-700 hover:bg-blue-50">Commencer</Button>
+            <div className={`md:hidden py-3 space-y-1 border-t ${navScrolled ? "border-gray-100" : "border-white/20"}`}>
+              {navScrolled ? (
+                <>
+                  <a href="#features"     className="block px-4 py-2.5 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-medium text-sm">Fonctionnalités</a>
+                  <a href="#testimonials" className="block px-4 py-2.5 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-medium text-sm">Témoignages</a>
+                  <button onClick={() => navigate('/contact')} className="w-full text-left px-4 py-2.5 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-medium text-sm">Contact</button>
+                  <div className="border-t border-gray-100 my-2" />
+                  <Button onClick={() => navigate('/login')} variant="outline" className="w-full">Connexion</Button>
+                  <Button onClick={() => navigate('/login')} className="w-full bg-blue-600 hover:bg-blue-700">Commencer</Button>
+                </>
+              ) : (
+                <>
+                  <a href="#features"     className="block px-4 py-2.5 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors font-medium text-sm">Fonctionnalités</a>
+                  <a href="#testimonials" className="block px-4 py-2.5 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors font-medium text-sm">Témoignages</a>
+                  <button onClick={() => navigate('/contact')} className="w-full text-left px-4 py-2.5 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors font-medium text-sm">Contact</button>
+                  <div className="border-t border-white/20 my-2" />
+                  <Button onClick={() => navigate('/login')} variant="outline" className="w-full border-white/30 text-white hover:bg-white/10">Connexion</Button>
+                  <Button onClick={() => navigate('/login')} className="w-full bg-white text-blue-700 hover:bg-blue-50">Commencer</Button>
+                </>
+              )}
             </div>
           )}
         </div>

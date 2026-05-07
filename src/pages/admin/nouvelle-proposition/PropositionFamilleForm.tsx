@@ -62,15 +62,27 @@ export default function PropositionFamilleForm({ onBack, onSaved }: Props) {
   const [nbPersonnesAgees, setNbPersonnesAgees] = useState(0);
 
   const [typeGarantie,      setTypeGarantie]      = useState<"Standard" | "Confort" | "Premium">("Standard");
+  const [showTarifsPerso,   setShowTarifsPerso]   = useState(false);
+  const [tarifsPersoAdulte,    setTarifsPersoAdulte]    = useState<string>("");
+  const [tarifsPersoEnfant,    setTarifsPersoEnfant]    = useState<string>("");
+  const [tarifsPersoAdulteAge, setTarifsPersoAdulteAge] = useState<string>("");
   const [dureeAns,          setDureeAns]          = useState(1);
   const [dateDebut,         setDateDebut]         = useState("");
   const [tauxRemboursement, setTauxRemboursement] = useState(80);
   const [observations,      setObservations]      = useState("");
 
-  const primeEstimee = useMemo(
-    () => calcPrime(nbAdultes, nbEnfants, nbPersonnesAgees, typeGarantie, dureeAns),
-    [nbAdultes, nbEnfants, nbPersonnesAgees, typeGarantie, dureeAns],
-  );
+  const primeEstimee = useMemo(() => {
+    const t    = getTarifs();
+    const mult = GARANTIE_MULT[typeGarantie] ?? 1;
+    const uA   = showTarifsPerso && tarifsPersoAdulte    ? Number(tarifsPersoAdulte)    : Math.round(t.primeAdulte    * mult);
+    const uE   = showTarifsPerso && tarifsPersoEnfant    ? Number(tarifsPersoEnfant)    : Math.round(t.primeEnfant    * mult);
+    const uAg  = showTarifsPerso && tarifsPersoAdulteAge ? Number(tarifsPersoAdulteAge) : Math.round(t.primeAdulteAge * mult);
+    const net  = nbAdultes * uA + nbEnfants * uE + nbPersonnesAgees * uAg;
+    const cp   = Math.round(net * t.tauxCP   / 100);
+    const tax  = Math.round((net + cp) * t.tauxTaxe / 100);
+    return (net + cp + tax) * dureeAns;
+  }, [nbAdultes, nbEnfants, nbPersonnesAgees, typeGarantie, dureeAns,
+      showTarifsPerso, tarifsPersoAdulte, tarifsPersoEnfant, tarifsPersoAdulteAge]);
 
   const nbTotal = nbAdultes + nbEnfants + nbPersonnesAgees;
 
@@ -98,6 +110,9 @@ export default function PropositionFamilleForm({ onBack, onSaved }: Props) {
         dateDebut,
         primeEstimee,
         tauxRemboursement,
+        tarifsPersoAdulte:    showTarifsPerso && tarifsPersoAdulte    ? Number(tarifsPersoAdulte)    : null,
+        tarifsPersoEnfant:    showTarifsPerso && tarifsPersoEnfant    ? Number(tarifsPersoEnfant)    : null,
+        tarifsPersoAdulteAge: showTarifsPerso && tarifsPersoAdulteAge ? Number(tarifsPersoAdulteAge) : null,
         observations: observations.trim(),
       };
       const prop = DataService.createProposition({
@@ -252,15 +267,69 @@ export default function PropositionFamilleForm({ onBack, onSaved }: Props) {
             );
           })}
         </div>
+
+        {/* ── Tarifs personnalisés ── */}
+        <div className="pt-3 mt-1 border-t border-gray-100">
+          <button
+            type="button"
+            onClick={() => {
+              const next = !showTarifsPerso;
+              setShowTarifsPerso(next);
+              if (next) {
+                const t = getTarifs();
+                const mult = GARANTIE_MULT[typeGarantie] ?? 1;
+                if (!tarifsPersoAdulte)    setTarifsPersoAdulte(String(Math.round(t.primeAdulte    * mult)));
+                if (!tarifsPersoEnfant)    setTarifsPersoEnfant(String(Math.round(t.primeEnfant    * mult)));
+                if (!tarifsPersoAdulteAge) setTarifsPersoAdulteAge(String(Math.round(t.primeAdulteAge * mult)));
+              }
+            }}
+            className={`flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-lg border transition-all ${
+              showTarifsPerso
+                ? "bg-amber-50 border-amber-300 text-amber-800"
+                : "bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300"
+            }`}
+          >
+            <span className={`w-3.5 h-3.5 rounded-sm border-2 flex items-center justify-center shrink-0 ${showTarifsPerso ? "bg-amber-500 border-amber-500" : "border-gray-400"}`}>
+              {showTarifsPerso && <span className="text-white text-[8px] font-black leading-none">✓</span>}
+            </span>
+            Tarifs personnalisés (dérogatoires)
+          </button>
+
+          {showTarifsPerso && (
+            <div className="mt-3 grid grid-cols-3 gap-3">
+              {([
+                { label: "Prime adulte (21–59 ans)", val: tarifsPersoAdulte,    set: setTarifsPersoAdulte },
+                { label: "Prime enfant (< 21 ans)",  val: tarifsPersoEnfant,    set: setTarifsPersoEnfant },
+                { label: "Prime 60 ans et plus",     val: tarifsPersoAdulteAge, set: setTarifsPersoAdulteAge },
+              ]).map(({ label, val, set }) => (
+                <div key={label}>
+                  <Label className="text-xs text-amber-800">{label}</Label>
+                  <div className="flex items-center gap-1 mt-1">
+                    <Input
+                      type="number" min={0}
+                      value={val}
+                      onChange={e => set(e.target.value)}
+                      className="text-right font-mono text-sm border-amber-300 focus-visible:ring-amber-400"
+                    />
+                    <span className="text-xs text-gray-400 shrink-0">FCFA</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </Card>
 
       {/* ── Prime estimée ── */}
       {nbTotal > 0 && (() => {
         const t    = getTarifs();
         const mult = GARANTIE_MULT[typeGarantie] ?? 1;
-        const unitA  = Math.round(t.primeAdulte    * mult);
-        const unitE  = Math.round(t.primeEnfant    * mult);
-        const unitAg = Math.round(t.primeAdulteAge * mult);
+        const baseA  = showTarifsPerso && tarifsPersoAdulte    ? Number(tarifsPersoAdulte)    : Math.round(t.primeAdulte    * mult);
+        const baseE  = showTarifsPerso && tarifsPersoEnfant    ? Number(tarifsPersoEnfant)    : Math.round(t.primeEnfant    * mult);
+        const baseAg = showTarifsPerso && tarifsPersoAdulteAge ? Number(tarifsPersoAdulteAge) : Math.round(t.primeAdulteAge * mult);
+        const unitA  = baseA;
+        const unitE  = baseE;
+        const unitAg = baseAg;
         const pA   = nbAdultes        * unitA;
         const pE   = nbEnfants        * unitE;
         const pAg  = nbPersonnesAgees * unitAg;
@@ -276,26 +345,38 @@ export default function PropositionFamilleForm({ onBack, onSaved }: Props) {
               <span className="ml-2 text-xs bg-white/20 px-2 py-0.5 rounded-full">
                 {typeGarantie} · ×{mult.toFixed(2)}
               </span>
+              {showTarifsPerso && (
+                <span className="text-xs bg-amber-400/30 text-amber-100 px-2 py-0.5 rounded-full">
+                  Tarifs dérogatoires
+                </span>
+              )}
               <span className="ml-auto text-xs opacity-70">indicative — sujet à validation</span>
             </div>
 
-            {/* Grille des tarifs de base appliqués */}
+            {/* Grille des tarifs appliqués */}
             <div className="px-4 py-3 bg-gray-50 border-b">
-              <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-2">Tarifs de base appliqués</p>
+              <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                Tarifs appliqués {showTarifsPerso ? "(personnalisés)" : "(barème standard)"}
+              </p>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { label: "Adulte (21–59 ans)", base: t.primeAdulte, unit: unitA, show: true },
-                  { label: "Enfant (< 21 ans)",  base: t.primeEnfant, unit: unitE, show: nbEnfants > 0 || true },
-                  { label: "60 ans et plus",     base: t.primeAdulteAge, unit: unitAg, show: true },
-                ].map(({ label, base, unit }) => (
-                  <div key={label} className="bg-white border rounded-lg p-2 text-xs">
-                    <p className="text-[10px] text-gray-400 mb-0.5">{label}</p>
-                    <p className="font-mono font-semibold text-gray-700">{base.toLocaleString("fr-FR")} <span className="font-normal text-gray-400">FCFA</span></p>
-                    {mult > 1 && (
-                      <p className="text-[10px] text-blue-600 mt-0.5 font-medium">→ {unit.toLocaleString("fr-FR")} FCFA</p>
-                    )}
-                  </div>
-                ))}
+                  { label: "Adulte (21–59 ans)", standard: Math.round(t.primeAdulte * mult),    applied: unitA },
+                  { label: "Enfant (< 21 ans)",  standard: Math.round(t.primeEnfant * mult),    applied: unitE },
+                  { label: "60 ans et plus",     standard: Math.round(t.primeAdulteAge * mult), applied: unitAg },
+                ].map(({ label, standard, applied }) => {
+                  const isOverridden = showTarifsPerso && applied !== standard;
+                  return (
+                    <div key={label} className={`border rounded-lg p-2 text-xs ${isOverridden ? "bg-amber-50 border-amber-200" : "bg-white"}`}>
+                      <p className="text-[10px] text-gray-400 mb-0.5">{label}</p>
+                      {isOverridden && (
+                        <p className="font-mono text-gray-400 line-through text-[10px]">{standard.toLocaleString("fr-FR")} FCFA</p>
+                      )}
+                      <p className={`font-mono font-semibold ${isOverridden ? "text-amber-700" : "text-gray-700"}`}>
+                        {applied.toLocaleString("fr-FR")} <span className="font-normal text-gray-400">FCFA</span>
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
