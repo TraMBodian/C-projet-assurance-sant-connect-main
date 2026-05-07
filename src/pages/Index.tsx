@@ -169,9 +169,9 @@ const Index = () => {
   }, []);
 
   const testimonials = [
-    { name: "Marie Dubois", role: "Directrice RH", text: "Une solution exceptionnelle qui a transformé notre gestion d'assurance.", rating: 5 },
-    { name: "Jean Martin", role: "Gérant d'entreprise", text: "Interface intuitive et support client réactif. Je recommande vivement!", rating: 5 },
-    { name: "Sophie Laurent", role: "Responsable Santé", text: "Gain de temps considérable dans le traitement des dossiers.", rating: 5 }
+    { name: "Aïssatou Diallo", role: "Directrice des Ressources Humaines", text: "Depuis que nous utilisons cette plateforme, la gestion de nos 200 assurés est devenue un jeu d'enfant. Gain de temps énorme.", rating: 5 },
+    { name: "Mamadou Ndiaye", role: "Gérant, Cabinet Médical Dakar", text: "Interface claire, remboursements traités en moins de 48 h. Nos patients sont très satisfaits du service.", rating: 5 },
+    { name: "Fatoumata Sow", role: "Responsable Santé & Prévoyance", text: "Le suivi en temps réel des sinistres a complètement transformé notre façon de travailler. Outil indispensable.", rating: 5 },
   ];
 
   return (
@@ -185,27 +185,27 @@ const Index = () => {
             </div>
 
             <div className="hidden md:flex items-center gap-0.5">
-              <a href="#features"    className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-gray-800 hover:text-blue-600 hover:bg-white/40">Fonctionnalités</a>
-              <a href="#testimonials" className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-gray-800 hover:text-blue-600 hover:bg-white/40">Témoignages</a>
-              <button onClick={() => navigate('/contact')} className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-gray-800 hover:text-blue-600 hover:bg-white/40">Contact</button>
-              <div className="w-px h-5 mx-1.5 bg-gray-300/60"></div>
-              <button onClick={() => navigate('/login')} className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all text-gray-800 hover:text-blue-600 hover:bg-white/40">Connexion</button>
-              <button onClick={() => navigate('/login')} className="ml-1.5 px-4 py-1.5 bg-blue-600 text-white text-sm font-semibold rounded-xl shadow hover:bg-blue-700 transition-colors whitespace-nowrap">Commencer</button>
+              <a href="#features"     className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-white/90 hover:text-white hover:bg-white/20">Fonctionnalités</a>
+              <a href="#testimonials" className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-white/90 hover:text-white hover:bg-white/20">Témoignages</a>
+              <button onClick={() => navigate('/contact')} className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-white/90 hover:text-white hover:bg-white/20">Contact</button>
+              <div className="w-px h-5 mx-1.5 bg-white/30"></div>
+              <button onClick={() => navigate('/login')} className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all text-white/90 hover:text-white hover:bg-white/20">Connexion</button>
+              <button onClick={() => navigate('/login')} className="ml-1.5 px-4 py-1.5 bg-white text-blue-700 text-sm font-semibold rounded-xl shadow hover:bg-blue-50 transition-colors whitespace-nowrap">Commencer</button>
             </div>
 
-            <button className="md:hidden p-2 hover:bg-blue-50 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-              <Menu className="w-6 h-6 text-gray-700" />
+            <button className="md:hidden p-2 hover:bg-white/20 rounded-lg transition-colors" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+              <Menu className="w-6 h-6 text-white" />
             </button>
           </div>
 
           {mobileMenuOpen && (
-            <div className="md:hidden py-4 space-y-2 border-t border-blue-100">
-              <a href="#features" className="block px-4 py-3 text-gray-700 hover:bg-blue-50 rounded-lg transition-colors font-medium">Fonctionnalités</a>
-              <a href="#testimonials" className="block px-4 py-3 text-gray-700 hover:bg-blue-50 rounded-lg transition-colors font-medium">Témoignages</a>
-              <a href="#contact" className="block px-4 py-3 text-gray-700 hover:bg-blue-50 rounded-lg transition-colors font-medium">Contact</a>
-              <div className="border-t border-blue-100 my-2"></div>
-              <Button onClick={() => navigate('/login')} variant="outline" className="w-full btn-ripple">Connexion</Button>
-              <Button onClick={() => navigate('/login')} className="w-full">Commencer</Button>
+            <div className="md:hidden py-3 space-y-1 border-t border-white/20">
+              <a href="#features"     className="block px-4 py-2.5 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors font-medium text-sm">Fonctionnalités</a>
+              <a href="#testimonials" className="block px-4 py-2.5 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors font-medium text-sm">Témoignages</a>
+              <button onClick={() => navigate('/contact')} className="w-full text-left px-4 py-2.5 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors font-medium text-sm">Contact</button>
+              <div className="border-t border-white/20 my-2" />
+              <Button onClick={() => navigate('/login')} variant="outline" className="w-full border-white/30 text-white hover:bg-white/10">Connexion</Button>
+              <Button onClick={() => navigate('/login')} className="w-full bg-white text-blue-700 hover:bg-blue-50">Commencer</Button>
             </div>
           )}
         </div>
@@ -565,7 +565,7 @@ const Index = () => {
           </div>
 
           <div className="border-t border-gray-800 pt-4 text-center text-gray-400">
-            <p>&copy; 2024 Papy Services Assurances. Tous droits réservés.</p>
+            <p>&copy; {new Date().getFullYear()} Papy Services Assurances. Tous droits réservés.</p>
           </div>
         </div>
       </footer>

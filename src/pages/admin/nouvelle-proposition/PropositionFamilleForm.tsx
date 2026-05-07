@@ -12,8 +12,7 @@ import type { PropositionFamilleData } from "./types";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
-const DUREES    = [1, 2, 3];
-const GARANTIES = ["Standard", "Confort", "Premium"] as const;
+const DUREES = [1, 2, 3];
 
 const GARANTIE_MULT: Record<string, number> = {
   Standard: 1,
@@ -205,13 +204,66 @@ export default function PropositionFamilleForm({ onBack, onSaved }: Props) {
         )}
       </Card>
 
-      {/* ── Prime estimée (affichée dès que la population est renseignée) ── */}
+      {/* ── Formule de couverture ── */}
+      <Card className="p-5 space-y-3">
+        <h3 className="font-semibold text-base border-b pb-2">Formule de couverture</h3>
+        <div className="grid grid-cols-3 gap-3">
+          {([
+            {
+              val:         "Standard" as const,
+              mult:        1,
+              activeClass: "border-blue-500 bg-blue-50",
+              labelClass:  "text-blue-700",
+              badge:       "bg-blue-100 text-blue-700",
+              desc:        "Soins courants · Pharmacie · Consultations généralistes",
+            },
+            {
+              val:         "Confort" as const,
+              mult:        1.25,
+              activeClass: "border-indigo-500 bg-indigo-50",
+              labelClass:  "text-indigo-700",
+              badge:       "bg-indigo-100 text-indigo-700",
+              desc:        "Standard + Spécialistes · Analyses · Radiologie",
+            },
+            {
+              val:         "Premium" as const,
+              mult:        1.6,
+              activeClass: "border-purple-500 bg-purple-50",
+              labelClass:  "text-purple-700",
+              badge:       "bg-purple-100 text-purple-700",
+              desc:        "Confort + Hospitalisation · Maternité · Chirurgie",
+            },
+          ]).map(({ val, mult, activeClass, labelClass, badge, desc }) => {
+            const active = typeGarantie === val;
+            return (
+              <button key={val} type="button" onClick={() => setTypeGarantie(val)}
+                className={`rounded-xl border-2 p-3 text-left transition-all focus:outline-none ${active ? activeClass : "border-gray-200 hover:border-gray-300 bg-white"}`}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className={`text-[10px] font-bold uppercase tracking-widest ${active ? labelClass : "text-gray-500"}`}>{val}</span>
+                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${active ? badge : "bg-gray-100 text-gray-500"}`}>
+                    ×{mult.toFixed(2)}
+                  </span>
+                </div>
+                <p className="text-[10px] text-gray-500 leading-snug">{desc}</p>
+                {active && (
+                  <div className={`mt-2 w-full h-0.5 rounded-full ${labelClass.replace("text-", "bg-")}`} />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </Card>
+
+      {/* ── Prime estimée ── */}
       {nbTotal > 0 && (() => {
         const t    = getTarifs();
         const mult = GARANTIE_MULT[typeGarantie] ?? 1;
-        const pA   = Math.round(nbAdultes        * t.primeAdulte    * mult);
-        const pE   = Math.round(nbEnfants        * t.primeEnfant    * mult);
-        const pAg  = Math.round(nbPersonnesAgees * t.primeAdulteAge * mult);
+        const unitA  = Math.round(t.primeAdulte    * mult);
+        const unitE  = Math.round(t.primeEnfant    * mult);
+        const unitAg = Math.round(t.primeAdulteAge * mult);
+        const pA   = nbAdultes        * unitA;
+        const pE   = nbEnfants        * unitE;
+        const pAg  = nbPersonnesAgees * unitAg;
         const primeNette = pA + pE + pAg;
         const cp    = Math.round(primeNette * t.tauxCP   / 100);
         const taxes = Math.round((primeNette + cp) * t.tauxTaxe / 100);
@@ -221,13 +273,37 @@ export default function PropositionFamilleForm({ onBack, onSaved }: Props) {
             <div className="flex items-center gap-2 px-4 py-3 text-white" style={{ background: "#1B5299" }}>
               <Calculator className="w-4 h-4 shrink-0" />
               <p className="font-semibold text-sm">Prime estimée</p>
-              <span className="ml-auto text-xs opacity-80">indicative — sujet à validation</span>
+              <span className="ml-2 text-xs bg-white/20 px-2 py-0.5 rounded-full">
+                {typeGarantie} · ×{mult.toFixed(2)}
+              </span>
+              <span className="ml-auto text-xs opacity-70">indicative — sujet à validation</span>
             </div>
+
+            {/* Grille des tarifs de base appliqués */}
+            <div className="px-4 py-3 bg-gray-50 border-b">
+              <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-2">Tarifs de base appliqués</p>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: "Adulte (21–59 ans)", base: t.primeAdulte, unit: unitA, show: true },
+                  { label: "Enfant (< 21 ans)",  base: t.primeEnfant, unit: unitE, show: nbEnfants > 0 || true },
+                  { label: "60 ans et plus",     base: t.primeAdulteAge, unit: unitAg, show: true },
+                ].map(({ label, base, unit }) => (
+                  <div key={label} className="bg-white border rounded-lg p-2 text-xs">
+                    <p className="text-[10px] text-gray-400 mb-0.5">{label}</p>
+                    <p className="font-mono font-semibold text-gray-700">{base.toLocaleString("fr-FR")} <span className="font-normal text-gray-400">FCFA</span></p>
+                    {mult > 1 && (
+                      <p className="text-[10px] text-blue-600 mt-0.5 font-medium">→ {unit.toLocaleString("fr-FR")} FCFA</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="divide-y">
               {[
-                { label: `Adultes × ${nbAdultes}`,           value: pA,         show: nbAdultes > 0 },
-                { label: `Enfants × ${nbEnfants}`,           value: pE,         show: nbEnfants > 0 },
-                { label: `Personnes âgées × ${nbPersonnesAgees}`, value: pAg,   show: nbPersonnesAgees > 0 },
+                { label: `Adultes × ${nbAdultes} · ${unitA.toLocaleString("fr-FR")} FCFA/pers`,               value: pA,  show: nbAdultes > 0 },
+                { label: `Enfants × ${nbEnfants} · ${unitE.toLocaleString("fr-FR")} FCFA/pers`,               value: pE,  show: nbEnfants > 0 },
+                { label: `Pers. âgées × ${nbPersonnesAgees} · ${unitAg.toLocaleString("fr-FR")} FCFA/pers`,  value: pAg, show: nbPersonnesAgees > 0 },
               ].filter(r => r.show).map(r => (
                 <div key={r.label} className="flex justify-between px-4 py-2.5 text-sm">
                   <span className="text-muted-foreground">{r.label}</span>
@@ -261,23 +337,12 @@ export default function PropositionFamilleForm({ onBack, onSaved }: Props) {
         );
       })()}
 
-      {/* ── Couverture & Durée ── */}
+      {/* ── Durée & Conditions ── */}
       <Card className="p-6 space-y-4">
-        <h3 className="font-semibold text-base border-b pb-2">Couverture & Durée</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <h3 className="font-semibold text-base border-b pb-2">Durée & Conditions</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <Label>Formule de garantie</Label>
-            <Select value={typeGarantie} onValueChange={v => setTypeGarantie(v as any)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {GARANTIES.map(g => (
-                  <SelectItem key={g} value={g}>{g}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Durée</Label>
+            <Label>Durée souhaitée</Label>
             <Select value={String(dureeAns)} onValueChange={v => setDureeAns(Number(v))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
