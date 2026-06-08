@@ -5,6 +5,7 @@ import com.assurance.sante.connect.entity.FamilleAssurance;
 import com.assurance.sante.connect.service.FamilleAssuranceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -13,6 +14,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/familles")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 public class FamilleAssuranceController {
 
     private final FamilleAssuranceService service;

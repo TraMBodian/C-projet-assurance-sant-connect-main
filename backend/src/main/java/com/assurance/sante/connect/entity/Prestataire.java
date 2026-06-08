@@ -1,11 +1,16 @@
 package com.assurance.sante.connect.entity;
 
+import com.assurance.sante.connect.entity.User;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "prestataires")
+@Table(name = "prestataires", indexes = {
+    @Index(name = "idx_prestataire_email",  columnList = "email"),
+    @Index(name = "idx_prestataire_statut", columnList = "statut"),
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -28,6 +33,12 @@ public class Prestataire {
     private String telephone;
 
     private String email;
+
+    /** Lien formel vers le compte utilisateur (optionnel — peut être nul pour les prestataires sans compte) */
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
 
     private String adresse;
 

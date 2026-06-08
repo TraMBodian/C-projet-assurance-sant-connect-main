@@ -1,4 +1,5 @@
 import Pusher from 'pusher-js';
+import { apiClient } from '@/services/apiClient';
 
 const KEY     = import.meta.env.VITE_PUSHER_APP_KEY  ?? '';
 const CLUSTER = import.meta.env.VITE_PUSHER_CLUSTER  ?? 'eu';
@@ -13,8 +14,9 @@ export function getPusher(): Pusher | null {
       cluster: CLUSTER,
       authEndpoint: `${API_URL}/pusher/auth`,
       auth: {
+        // Lit le token depuis la mémoire (apiClient) au moment de la création
         headers: {
-          Authorization: `Bearer ${sessionStorage.getItem('auth_token') ?? ''}`,
+          Authorization: `Bearer ${apiClient.getToken() ?? ''}`,
         },
       },
     });
@@ -55,14 +57,15 @@ export const EV = {
 // ─── Payloads typés ───────────────────────────────────────────────────────────
 
 export interface NotifPayload {
-  id: string;
-  type: string;
-  priority: 'high' | 'low';
-  message: string;
-  detail: string;
-  link: string;
-  time: string;
-  targetRole?: string;
+  id:            string;
+  type:          string;
+  priority:      'high' | 'low';
+  message:       string;
+  detail:        string;
+  link:          string;
+  time:          string;
+  targetRole?:   string;
+  targetUserId?: string;
 }
 
 export interface StatsPayload {

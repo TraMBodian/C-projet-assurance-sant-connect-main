@@ -92,6 +92,7 @@ public class FamilleAssuranceService {
                 .dateNaissance(famille.getDateNaissancePrincipal())
                 .pieceIdentite(famille.getPieceIdentitePrincipal())
                 .garantie("Standard")
+                .familleId(famille.getId())
                 .build();
 
             assureRepository.save(principal);
@@ -139,6 +140,7 @@ public class FamilleAssuranceService {
                     .pieceIdentite(cniBen.isEmpty() ? null : cniBen)
                     .dateAdhesion(str(b, "dateAdhesion"))
                     .garantie("Standard")
+                    .familleId(famille.getId())
                     .build();
 
                 assureRepository.save(ben);

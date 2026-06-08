@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Search, Pill, FileText, Loader2, AlertCircle, Download, Eye, Phone, MapPin } from "@/components/ui/Icons";
-import { useNavigate } from "react-router-dom";
+import { Plus, Search, Pill, FileText, Loader2, AlertCircle, Download, Eye, Phone, MapPin, Stethoscope } from "@/components/ui/Icons";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { DataService } from "@/services/dataService";
@@ -9,20 +9,36 @@ import { useAuth } from "@/context/AuthContext";
 
 export default function PrescriptionsPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const isClient = user?.role === "client";
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { user, myPrestataire } = useAuth();
+  const isClient      = user?.role === "client";
+  const isPrestataire = user?.role === "prestataire";
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(searchParams.get("q") ?? "");
+
+  useEffect(() => {
+    const p: Record<string, string> = {};
+    if (search) p.q = search;
+    setSearchParams(p, { replace: true });
+  }, [search]);
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    DataService.getPrescriptions()
-      .then((list) => setPrescriptions(list ?? []))
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
-  }, []);
+    const fetchAll = async () => {
+      try {
+        // Le backend filtre déjà par rôle (prestataire → ses prescriptions uniquement)
+        const list = await DataService.getPrescriptions(user);
+        setPrescriptions(list ?? []);
+      } catch {
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAll();
+  }, [user]);
 
   const assureNom = (p: any) => {
     const assure = p.consultation?.assure;
@@ -204,7 +220,24 @@ export default function PrescriptionsPage() {
 
   return (
     <AppLayout title={isClient ? "Mes Prescriptions" : "Gestion des Ordonnances"}>
-      <div className="space-y-4 sm:space-y-5">
+      <div className="space-y-4 sm:space-y-5 px-4 sm:px-6">
+
+        {/* ── Bandeau prestataire ────────────────────────────────────── */}
+        {isPrestataire && myPrestataire && (
+          <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+            <Stethoscope size={18} className="text-blue-600 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-blue-800 truncate">{myPrestataire.nom}</p>
+              <p className="text-xs text-blue-600">
+                {prescriptions.length} ordonnance{prescriptions.length !== 1 ? "s" : ""} enregistrée{prescriptions.length !== 1 ? "s" : ""} par votre établissement
+              </p>
+            </div>
+            <Button size="sm" onClick={() => navigate("/prescriptions/new")} className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white">
+              <Plus size={14} className="mr-1" />
+              Nouvelle
+            </Button>
+          </div>
+        )}
 
         {/* ── Bandeau info client ─────────────────────────────────────── */}
         {isClient && (
@@ -217,17 +250,17 @@ export default function PrescriptionsPage() {
             <div className="flex gap-2 shrink-0">
               <Button size="sm" variant="outline"
                 className="h-8 text-xs border-blue-300 text-blue-700 hover:bg-blue-100 gap-1.5"
-                onClick={() => navigate("/contact")}
+                onClick={() => navigate("/professionnels-sante")}
               >
-                <Phone size={13} />
-                Contacter un médecin
+                <Search size={13} />
+                Rechercher un spécialiste
               </Button>
               <Button size="sm" variant="outline"
                 className="h-8 text-xs border-blue-300 text-blue-700 hover:bg-blue-100 gap-1.5"
-                onClick={() => window.open("https://maps.google.com/?q=pharmacie+Dakar+Sénégal", "_blank")}
+                onClick={() => navigate("/professionnels-sante?type=PHARMACIE")}
               >
                 <MapPin size={13} />
-                Pharmacie proche
+                Trouver une pharmacie
               </Button>
             </div>
           </div>
@@ -291,9 +324,26 @@ export default function PrescriptionsPage() {
 
         {/* ── États ──────────────────────────────────────────────────── */}
         {loading ? (
-          <div className="flex items-center justify-center h-48 gap-3 text-muted-foreground">
-            <Loader2 size={22} className="animate-spin" />
-            <span className="text-sm">Chargement...</span>
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="bg-card rounded-xl p-4 sm:p-5 border border-border animate-pulse">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="w-10 h-10 bg-muted rounded-lg shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-muted rounded w-3/5" />
+                      <div className="h-3 bg-muted rounded w-2/5" />
+                    </div>
+                  </div>
+                  <div className="w-16 h-5 bg-muted rounded-full shrink-0" />
+                </div>
+                <div className="h-px bg-muted my-3" />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="h-12 bg-muted rounded-lg" />
+                  <div className="h-12 bg-muted rounded-lg" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center h-48 gap-2 text-center px-4">
@@ -322,20 +372,41 @@ export default function PrescriptionsPage() {
                 className="bg-card rounded-xl p-4 sm:p-5 border border-border hover:shadow-md transition-shadow"
               >
                 {/* En-tête */}
-                <div className="flex items-start gap-3 mb-3">
-                  <div className="w-9 h-9 sm:w-11 sm:h-11 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center text-white shrink-0">
-                    <Pill size={17} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold truncate text-sm sm:text-base">{assureNom(p) || "Patient inconnu"}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {p.createdAt ? `Prescrit le ${new Date(p.createdAt).toLocaleDateString("fr-FR")}` : "—"}
-                    </p>
-                    {p.consultation?.prestataire?.nom && (
-                      <p className="text-xs text-muted-foreground truncate">Dr. {p.consultation.prestataire.nom}</p>
-                    )}
-                  </div>
-                </div>
+                {(() => {
+                  const createdAt = p.createdAt ? new Date(p.createdAt) : null;
+                  const expiresAt = createdAt ? new Date(createdAt.getTime() + 30 * 24 * 60 * 60 * 1000) : null;
+                  const now       = new Date();
+                  const daysLeft  = expiresAt ? Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
+                  const expired   = daysLeft !== null && daysLeft <= 0;
+                  const expiringSoon = daysLeft !== null && daysLeft > 0 && daysLeft <= 7;
+
+                  return (
+                    <>
+                      {(expired || expiringSoon) && (
+                        <div className={`flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-lg mb-3 ${expired ? "bg-red-50 text-red-700 border border-red-200" : "bg-orange-50 text-orange-700 border border-orange-200"}`}>
+                          <span>{expired ? "⚠ Ordonnance expirée" : `⏰ Expire dans ${daysLeft} jour${daysLeft > 1 ? "s" : ""}`}</span>
+                        </div>
+                      )}
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-lg flex items-center justify-center text-white shrink-0 ${expired ? "bg-red-500" : expiringSoon ? "bg-orange-500" : "bg-gradient-to-br from-blue-600 to-purple-600"}`}>
+                          <Pill size={17} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold truncate text-sm sm:text-base">{assureNom(p) || "Patient inconnu"}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {createdAt ? `Prescrit le ${createdAt.toLocaleDateString("fr-FR")}` : "—"}
+                            {expiresAt && !expired && (
+                              <span className="ml-2 text-muted-foreground">· Valide jusqu'au {expiresAt.toLocaleDateString("fr-FR")}</span>
+                            )}
+                          </p>
+                          {p.consultation?.prestataire?.nom && (
+                            <p className="text-xs text-muted-foreground truncate">Dr. {p.consultation.prestataire.nom}</p>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
 
                 {/* Médicament */}
                 <div className="bg-muted/40 rounded-lg p-2.5 sm:p-3 mb-3">

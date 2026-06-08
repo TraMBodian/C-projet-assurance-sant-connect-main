@@ -1,4 +1,4 @@
-import { getTarifs, type TarifSettings } from "@/services/tarifService";
+import { TARIF_DEFAULTS, type TarifSettings } from "@/services/tarifService";
 
 // ─── Constantes CNART ─────────────────────────────────────────────────────────
 
@@ -22,9 +22,9 @@ export const TYPE_PRICES: Record<TypeAssure, number> = {
 };
 
 export const TYPE_COLORS: Record<TypeAssure, string> = {
-  enfant:     "bg-green-50 border-green-200 text-green-700",
-  adulte:     "bg-blue-50 border-blue-200 text-blue-700",
-  adulte_age: "bg-purple-50 border-purple-200 text-purple-700",
+  enfant:     "bg-blue-50 border-blue-200 text-blue-600",
+  adulte:     "bg-blue-100 border-blue-300 text-blue-700",
+  adulte_age: "bg-blue-50 border-blue-200 text-blue-800",
 };
 
 export interface Beneficiaire {
@@ -52,7 +52,7 @@ export function newBeneficiaire(): Beneficiaire {
 // ─── Tableau des garanties ────────────────────────────────────────────────────
 
 export function getGarantiesCNART(tarifs?: TarifSettings, tauxOverride?: number) {
-  const t = tarifs ?? getTarifs();
+  const t = tarifs ?? TARIF_DEFAULTS;
   const taux = `${tauxOverride ?? t.tauxRemboursement} %`;
   const fmt = (n: number) => n.toLocaleString("fr-FR");
   return [
@@ -97,7 +97,7 @@ export function calcDecompte(
   typePrincipal: TypeAssure,
   tarifs?: TarifSettings,
 ) {
-  const t = tarifs ?? getTarifs();
+  const t = tarifs ?? TARIF_DEFAULTS;
   const tous = [{ type: typePrincipal }, ...beneficiaires];
   const nb: Record<TypeAssure, number> = { enfant: 0, adulte: 0, adulte_age: 0 };
   for (const p of tous) nb[p.type]++;

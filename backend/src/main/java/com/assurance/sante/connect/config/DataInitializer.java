@@ -33,12 +33,13 @@ public class DataInitializer implements CommandLineRunner {
             String trimmedEmail = email.trim();
             var existing = userRepository.findByEmail(trimmedEmail);
             if (existing.isPresent()) {
+                // Garantir uniquement que le compte est ACTIVE et ADMIN, sans toucher au mot de passe
                 User admin = existing.get();
-                admin.setPassword(passwordEncoder.encode(defaultPassword));
-                admin.setStatus(User.UserStatus.ACTIVE);
-                admin.setRole(User.UserRole.ADMIN);
-                userRepository.save(admin);
-                log.info("Admin user updated: {}", trimmedEmail);
+                boolean changed = false;
+                if (admin.getStatus() != User.UserStatus.ACTIVE) { admin.setStatus(User.UserStatus.ACTIVE); changed = true; }
+                if (admin.getRole()   != User.UserRole.ADMIN)     { admin.setRole(User.UserRole.ADMIN);     changed = true; }
+                if (changed) { userRepository.save(admin); log.info("Admin user promoted: {}", trimmedEmail); }
+                else         { log.info("Admin user already up-to-date: {}", trimmedEmail); }
             } else {
                 User admin = User.builder()
                     .email(trimmedEmail)

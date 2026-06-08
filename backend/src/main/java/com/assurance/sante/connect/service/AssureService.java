@@ -6,6 +6,8 @@ import com.assurance.sante.connect.repository.AssureRepository;
 import com.assurance.sante.connect.repository.PoliceRepository;
 import com.assurance.sante.connect.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -22,6 +24,13 @@ public class AssureService {
         return assureRepository.findAll().stream()
             .map(AssureDto::fromEntity)
             .collect(Collectors.toList());
+    }
+
+    public Page<AssureDto> getAssuresPaginated(String search, String statut, String type, Pageable pageable) {
+        String s = (search != null && !search.isBlank()) ? search.trim() : null;
+        String st = (statut != null && !statut.isBlank()) ? statut.trim() : null;
+        String tp = (type != null && !type.isBlank()) ? type.trim() : null;
+        return assureRepository.findWithFilters(s, st, tp, pageable).map(AssureDto::fromEntity);
     }
 
     public AssureDto getAssureById(Long id) {

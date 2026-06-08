@@ -6,9 +6,10 @@ import { Card }     from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Save, Calculator, User, Users, FileText } from "@/components/ui/Icons";
 import { toast }    from "sonner";
-import { getTarifs } from "@/services/tarifService";
+import { TARIF_DEFAULTS } from "@/services/tarifService";
+import { useTarifs } from "@/hooks/useTarifs";
 import { DataService } from "@/services/dataService";
-import type { PropositionFamilleData } from "./types";
+import type { PropositionFamilleData, MembreFamille } from "./types";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -29,7 +30,7 @@ function calcPrime(
   garantie: string,
   dureeAns: number,
 ): number {
-  const t    = getTarifs();
+  const t    = TARIF_DEFAULTS;
   const mult = GARANTIE_MULT[garantie] ?? 1;
   const primeNette =
     (nbAdultes        * t.primeAdulte   +
@@ -43,13 +44,14 @@ function calcPrime(
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface Props {
+  membresFamille: MembreFamille[];
   onBack:   () => void;
   onSaved:  (propId: string) => void;
 }
 
 // ─── Composant ────────────────────────────────────────────────────────────────
 
-export default function PropositionFamilleForm({ onBack, onSaved }: Props) {
+export default function PropositionFamilleForm({ membresFamille, onBack, onSaved }: Props) {
   const [isSaving, setIsSaving] = useState(false);
 
   const [souscripteurNom,     setSouscripteurNom]     = useState("");
@@ -72,7 +74,7 @@ export default function PropositionFamilleForm({ onBack, onSaved }: Props) {
   const [observations,      setObservations]      = useState("");
 
   const primeEstimee = useMemo(() => {
-    const t    = getTarifs();
+    const t    = TARIF_DEFAULTS;
     const mult = GARANTIE_MULT[typeGarantie] ?? 1;
     const uA   = showTarifsPerso && tarifsPersoAdulte    ? Number(tarifsPersoAdulte)    : Math.round(t.primeAdulte    * mult);
     const uE   = showTarifsPerso && tarifsPersoEnfant    ? Number(tarifsPersoEnfant)    : Math.round(t.primeEnfant    * mult);
@@ -102,6 +104,7 @@ export default function PropositionFamilleForm({ onBack, onSaved }: Props) {
         souscripteurEmail:   souscripteurEmail.trim(),
         souscripteurTel:     souscripteurTel.trim(),
         souscripteurAdresse: souscripteurAdresse.trim(),
+        membresFamille:      membresFamille.filter(m => m.nom.trim() || m.prenom.trim()),
         nbAdultes,
         nbEnfants,
         nbPersonnesAgees,
@@ -276,7 +279,7 @@ export default function PropositionFamilleForm({ onBack, onSaved }: Props) {
               const next = !showTarifsPerso;
               setShowTarifsPerso(next);
               if (next) {
-                const t = getTarifs();
+                const t = TARIF_DEFAULTS;
                 const mult = GARANTIE_MULT[typeGarantie] ?? 1;
                 if (!tarifsPersoAdulte)    setTarifsPersoAdulte(String(Math.round(t.primeAdulte    * mult)));
                 if (!tarifsPersoEnfant)    setTarifsPersoEnfant(String(Math.round(t.primeEnfant    * mult)));
@@ -322,7 +325,7 @@ export default function PropositionFamilleForm({ onBack, onSaved }: Props) {
 
       {/* ── Prime estimée ── */}
       {nbTotal > 0 && (() => {
-        const t    = getTarifs();
+        const t    = TARIF_DEFAULTS;
         const mult = GARANTIE_MULT[typeGarantie] ?? 1;
         const baseA  = showTarifsPerso && tarifsPersoAdulte    ? Number(tarifsPersoAdulte)    : Math.round(t.primeAdulte    * mult);
         const baseE  = showTarifsPerso && tarifsPersoEnfant    ? Number(tarifsPersoEnfant)    : Math.round(t.primeEnfant    * mult);

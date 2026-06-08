@@ -1,21 +1,25 @@
-import { Bell, Check, CheckCheck, AlertTriangle, UserCheck, ClipboardList, FileText, RefreshCw, WifiOff, Pill, CreditCard, Zap, Users } from "@/components/ui/Icons";
+import { Bell, Check, CheckCheck, AlertTriangle, UserCheck, ClipboardList, FileText, RefreshCw, WifiOff, Pill, CreditCard, Zap, Users, MessageCircle, UserPlus, Building2, CheckCircle2 } from "@/components/ui/Icons";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 import { apiClient } from "@/services/apiClient";
 import { notificationStore, type LocalNotification } from "@/services/notificationStore";
 import { usePusherChannel } from "@/hooks/usePusherChannel";
 import { CH, EV, type NotifPayload, getPusher } from "@/services/pusherService";
+import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface RawNotification {
-  id:       string | number;
-  type:     string;
-  priority: "high" | "low";
-  message:  string;
-  detail:   string;
-  link:     string;
-  time:     string;
+  id:            string | number;
+  type:          string;
+  priority:      "high" | "low";
+  message:       string;
+  detail:        string;
+  link:          string;
+  time:          string;
+  targetRole?:   string;
+  targetUserId?: string;
 }
 
 interface Notification extends RawNotification {
@@ -46,10 +50,14 @@ const TYPE_CONFIG: Record<string, { icon: React.ReactNode; bg: string; color: st
   sinistre:        { icon: <AlertTriangle size={14} />,  bg: "bg-orange-100",  color: "text-orange-600" },
   sinistre_recent: { icon: <FileText size={14} />,       bg: "bg-blue-100",    color: "text-blue-600"   },
   user:            { icon: <UserCheck size={14} />,      bg: "bg-purple-100",  color: "text-purple-600" },
-  consultation:    { icon: <ClipboardList size={14} />,  bg: "bg-teal-100",    color: "text-teal-600"   },
+  consultation:    { icon: <ClipboardList size={14} />,  bg: "bg-blue-100",    color: "text-blue-600"   },
   prescription:    { icon: <Pill size={14} />,           bg: "bg-green-100",   color: "text-green-600"  },
   paiement:        { icon: <CreditCard size={14} />,     bg: "bg-red-100",     color: "text-red-600"    },
   famille:         { icon: <Users size={14} />,          bg: "bg-amber-100",   color: "text-amber-600"  },
+  message:         { icon: <MessageCircle size={14} />,  bg: "bg-blue-100",    color: "text-blue-600"   },
+  patient:         { icon: <UserPlus size={14} />,       bg: "bg-green-100",   color: "text-green-600"  },
+  prestataire:     { icon: <Building2 size={14} />,      bg: "bg-purple-100",  color: "text-purple-600" },
+  acceptation:     { icon: <CheckCircle2 size={14} />,   bg: "bg-green-100",   color: "text-green-600"  },
   default:         { icon: <Bell size={14} />,           bg: "bg-gray-100",    color: "text-gray-600"   },
 };
 
@@ -59,12 +67,27 @@ const POLL_INTERVAL_FALLBACK = 60_000;
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+function isVisibleToUser(
+  n: { targetRole?: string; targetUserId?: string },
+  role: string,
+  userId: string,
+): boolean {
+  if (role === "admin") return true;                        // admin voit tout
+  if (!n.targetRole) return true;                           // pas de restriction
+  if (n.targetRole === "admin") return false;               // admin seulement
+  if (n.targetRole !== role) return false;                  // mauvais rôle
+  if (n.targetUserId && n.targetUserId !== userId) return false; // mauvais client
+  return true;
+}
+
 export const NotificationSystem = () => {
   const navigate  = useNavigate();
+  const { user }  = useAuth();
   const panelRef  = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const [isOpen,           setIsOpen]           = useState(false);
+  const [panelPos,         setPanelPos]         = useState<{ top: number; right: number }>({ top: 0, right: 0 });
   const [rawNotifications, setRawNotifications] = useState<RawNotification[]>([]);
   const [localNotifs,      setLocalNotifs]      = useState<LocalNotification[]>(() => notificationStore.getAll());
   const [loading,          setLoading]          = useState(false);
@@ -73,17 +96,19 @@ export const NotificationSystem = () => {
   // readIds chargés depuis localStorage au démarrage
   const [readIds, setReadIds] = useState<Set<string>>(loadReadIds);
 
-  // ── Notifications calculées (fusion API + locales + état lu) ────────────────
+  // ── Notifications calculées (fusion API + locales + filtrage par rôle) ──────
   const notifications = useMemo<Notification[]>(() => {
-    const apiNotifs: Notification[] = rawNotifications.map(n => ({
-      ...n,
-      id:   String(n.id),
-      read: readIds.has(String(n.id)),
-    }));
-    const local: Notification[] = localNotifs.map(n => ({
-      ...n,
-      read: readIds.has(n.id),
-    }));
+    const role   = user?.role   ?? "";
+    const userId = user?.id     ?? "";
+
+    const apiNotifs: Notification[] = rawNotifications
+      .filter(n => isVisibleToUser(n, role, userId))
+      .map(n => ({ ...n, id: String(n.id), read: readIds.has(String(n.id)) }));
+
+    const local: Notification[] = localNotifs
+      .filter(n => isVisibleToUser(n, role, userId))
+      .map(n => ({ ...n, read: readIds.has(n.id) }));
+
     // Dédoublonnage par id, locales en premier (plus récentes)
     const seen = new Set<string>();
     return [...local, ...apiNotifs].filter(n => {
@@ -91,7 +116,7 @@ export const NotificationSystem = () => {
       seen.add(n.id);
       return true;
     });
-  }, [rawNotifications, localNotifs, readIds]);
+  }, [rawNotifications, localNotifs, readIds, user?.role, user?.id]);
 
   // ── Fetch indépendant de readIds — pas besoin de redémarrer le polling ──────
   const fetchNotifications = useCallback(async () => {
@@ -107,6 +132,22 @@ export const NotificationSystem = () => {
       setLoading(false);
     }
   }, []); // aucune dépendance — stable pour tout le cycle de vie
+
+  // ── STOMP WebSocket : push temps-réel du backend (sans Pusher) ─────────────
+  useRealtimeNotifications(user?.id, (n) => {
+    const id = `stomp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    setRawNotifications(prev => [{
+      id,
+      type:      n.type,
+      priority:  (n.priority as "high" | "low") ?? "low",
+      message:   n.message,
+      detail:    "",
+      link:      n.link ?? "/dashboard",
+      time:      n.time ?? new Date().toLocaleTimeString("fr-FR"),
+      targetRole: user?.role,
+    }, ...prev]);
+    fetchNotifications(); // rafraîchit aussi les notifs API
+  });
 
   // ── Pusher : réception instantanée ─────────────────────────────────────────
   usePusherChannel(CH.notifications, {
@@ -174,16 +215,41 @@ export const NotificationSystem = () => {
     });
   };
 
-  const markRead = (id: string) =>
+  const markRead = (id: string) => {
     updateReadIds(prev => new Set([...prev, id]));
+    // Persister côté serveur si c'est une notif DB
+    const notif = notifications.find(n => n.id === id);
+    const dbId = (notif as any)?.dbId;
+    if (dbId) apiClient.markNotificationRead(dbId).catch(() => {});
+  };
 
-  const markAllRead = () =>
+  const markAllRead = () => {
     updateReadIds(() => new Set(notifications.map(n => n.id)));
+    apiClient.markAllNotificationsRead().catch(() => {});
+  };
+
+  // Liens de secours si le backend renvoie un link vide
+  const FALLBACK_LINKS: Record<string, string> = {
+    famille:      "/admin/maladie-famille",
+    sinistre:     "/sinistres",
+    sinistre_recent: "/sinistres",
+    consultation: "/consultations",
+    prescription: "/prescriptions",
+    paiement:     "/polices",
+    patient:      "/admin/assures",
+    user:         "/admin/assures",
+    prestataire:  "/admin/prestataires",
+    acceptation:  "/admin/propositions",
+    message:      "/chat",
+  };
 
   const handleClick = (n: Notification) => {
     markRead(n.id);
     setIsOpen(false);
-    navigate(n.link);
+    const destination = (n.link && n.link.trim() !== "" && n.link !== "#")
+      ? n.link
+      : (FALLBACK_LINKS[n.type] ?? "");
+    if (destination) navigate(destination);
   };
 
   // ── Computed ──────────────────────────────────────────────────────────────
@@ -201,7 +267,13 @@ export const NotificationSystem = () => {
       {/* ── Bell button ──────────────────────────────────────────────────── */}
       <button
         ref={buttonRef}
-        onClick={() => setIsOpen(o => !o)}
+        onClick={() => {
+          if (!isOpen && buttonRef.current) {
+            const rect = buttonRef.current.getBoundingClientRect();
+            setPanelPos({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
+          }
+          setIsOpen(o => !o);
+        }}
         className="relative p-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         aria-label={`Notifications${unread > 0 ? ` (${unread} non lues)` : ''}`}
       >
@@ -219,7 +291,8 @@ export const NotificationSystem = () => {
       {isOpen && (
         <div
           ref={panelRef}
-          className="absolute right-0 top-11 w-[340px] max-w-[90vw] bg-card border border-border rounded-xl shadow-xl z-[200] overflow-hidden"
+          style={{ top: panelPos.top, right: panelPos.right }}
+          className="fixed w-[340px] max-w-[90vw] bg-card border border-border rounded-xl shadow-xl z-[200] overflow-hidden"
         >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
@@ -349,7 +422,7 @@ export const NotificationSystem = () => {
                 {backendDown
                   ? "Serveur indisponible · cliquez ↺ pour réessayer"
                   : pusherLive
-                    ? "Notifications en temps réel ⚡"
+                    ? <span className="inline-flex items-center gap-1">Notifications en temps réel <Zap size={11} /></span>
                     : "Actualisé toutes les 60 secondes"
                 }
               </p>

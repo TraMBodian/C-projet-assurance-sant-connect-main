@@ -23,10 +23,22 @@ dist-ssr
 *.sln
 *.sw?
 
-# Secrets
+# Secrets & configuration sensible
 .env
 *.env
 !.env.example
 backend/src/main/resources/application-dev.yml
+
+# Bases de données H2 (développement local — ne jamais versionner)
+*.mv.db
+*.trace.db
+backend/data/
+
+# Répertoire uploads (fichiers utilisateurs)
+backend/uploads/
+/app/uploads/
+
+# Builds Maven
+backend/target/
 
 .vercel

@@ -4,7 +4,8 @@ import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, Users } from "@/components/ui/Icons";
-import { getTarifs } from "@/services/tarifService";
+import { TARIF_DEFAULTS } from "@/services/tarifService";
+import { useTarifs } from "@/hooks/useTarifs";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -52,7 +53,7 @@ export default function OffreStep({
   embedded = false,
 }: Props) {
   const navigate = useNavigate();
-  const tarifsGlobaux = getTarifs();
+  const tarifsGlobaux = useTarifs();
 
   const [customEnabled, setCustomEnabled] = useState(!!tarifsPerso);
 

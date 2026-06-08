@@ -30,9 +30,7 @@ spring:
             required: true
 
 server:
-  port: 3001
-  servlet:
-    context-path: /api
+  port: 3002
 
 app:
   jwtSecret: We7/Ty05ZUgeNXizXvsYVB2wNn1jiYR723q2Ho0EubelOwQhNSKtMizs/+29jNl1NGazGPrP2/WngrgDq1OuRw==

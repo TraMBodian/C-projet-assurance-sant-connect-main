@@ -127,15 +127,19 @@ function PropositionRow({
 
         {/* Actions */}
         <div className="flex flex-wrap items-center gap-2 shrink-0">
+
+          {/* Brouillon : envoyer au client (optionnel) */}
           {prop.statut === "brouillon" && (
             <Button size="sm" variant="outline" className="gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50"
-              onClick={() => onAction(prop.id, "envoyee")}>
+              onClick={() => onAction(prop.id, "envoyee")} title="Marquer comme envoyée au client">
               <Send className="w-3.5 h-3.5" /> Envoyer
             </Button>
           )}
-          {prop.statut === "envoyee" && (
+
+          {/* Brouillon ou Envoyée : l'admin peut Accepter ou Refuser */}
+          {(prop.statut === "brouillon" || prop.statut === "envoyee") && (
             <>
-              <Button size="sm" variant="outline" className="gap-1.5 text-green-600 border-green-200 hover:bg-green-50"
+              <Button size="sm" className="gap-1.5 text-white bg-green-600 hover:bg-green-700"
                 onClick={() => onAction(prop.id, "acceptee")}>
                 <CheckCircle2 className="w-3.5 h-3.5" /> Accepter
               </Button>
@@ -145,20 +149,28 @@ function PropositionRow({
               </Button>
             </>
           )}
+
+          {/* Acceptée : convertir en police */}
           {prop.statut === "acceptee" && (
             <Button size="sm" className="gap-1.5 text-white" style={{ background: "#1B5299" }}
               onClick={() => onConvert(prop.id)}>
               <ShieldCheck className="w-3.5 h-3.5" /> Créer la police
             </Button>
           )}
-          {prop.statut === "convertie" && prop.policeId && (
-            <span className="text-xs text-purple-700 font-medium flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5" /> Police #{prop.policeId}
+
+          {/* Convertie : lien vers la police */}
+          {prop.statut === "convertie" && (
+            <span className="text-xs text-purple-700 font-medium flex items-center gap-1 bg-purple-50 border border-purple-200 px-2 py-1 rounded-lg">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              {prop.policeId ? `Police #${prop.policeId}` : "Police créée"}
             </span>
           )}
+
+          {/* Supprimer (brouillon ou refusée) */}
           {(prop.statut === "brouillon" || prop.statut === "refusee") && (
             <button type="button" onClick={() => onDelete(prop.id)}
-              className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+              className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+              title="Supprimer">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           )}
@@ -193,10 +205,24 @@ export default function PropositionsPage() {
   const [deleteId,      setDeleteId]      = useState<string | null>(null);
 
   useEffect(() => {
-    setPropositions(DataService.getPropositions());
+    (async () => {
+      try {
+        const data = await DataService.getPropositions();
+        setPropositions(data);
+      } catch {
+        setPropositions([]);
+      }
+    })();
   }, []);
 
-  const reload = () => setPropositions(DataService.getPropositions());
+  const reload = async () => {
+    try {
+      const data = await DataService.getPropositions();
+      setPropositions(data);
+    } catch {
+      setPropositions([]);
+    }
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -208,9 +234,9 @@ export default function PropositionsPage() {
     });
   }, [propositions, filtre, search]);
 
-  const handleAction = (id: string, statut: StatutProposition) => {
-    DataService.updatePropositionStatut(id, statut);
-    reload();
+  const handleAction = async (id: string, statut: StatutProposition) => {
+    await DataService.updatePropositionStatut(id, statut);
+    await reload();
     const labels: Record<string, string> = {
       envoyee:  "Proposition envoyée",
       acceptee: "Proposition acceptée",
@@ -220,7 +246,8 @@ export default function PropositionsPage() {
   };
 
   const openConvertDialog = (id: string) => {
-    const prop = DataService.getPropositionById(id);
+    // Cherche dans l'état local pour éviter un appel async sans await
+    const prop = propositions.find(p => p.id === id) ?? null;
     if (!prop) return;
     const prime = prop.famille?.primeEstimee ?? prop.groupe?.primeEstimee ?? 0;
     setPrimeOverride(String(prime));
@@ -241,40 +268,60 @@ export default function PropositionsPage() {
       if (convertProp.famille) {
         const f = convertProp.famille;
         await DataService.createFamille({
-          principal:           f.souscripteurNom,
-          telephone:           f.souscripteurTel,
-          emailPrincipal:      f.souscripteurEmail,
-          adresse:             f.souscripteurAdresse,
-          typePrincipal:       "adulte",
-          beneficiaires:       [],
-          beneficiairesDetail: [],
-          dateDebut:           f.dateDebut,
-          dureeGarantie:       String(f.dureeAns),
-          prime:               String(primeFinale),
-          statut:              "ACTIVE",
-          propositionRef:      convertProp.reference,
-          nbAdultes:           f.nbAdultes,
-          nbEnfants:           f.nbEnfants,
-          nbPersonnesAgees:    f.nbPersonnesAgees,
+          principal:            f.souscripteurNom,
+          telephone:            f.souscripteurTel,
+          emailPrincipal:       f.souscripteurEmail,
+          adresse:              f.souscripteurAdresse,
+          typePrincipal:        "adulte",
+          beneficiaires:        [],
+          beneficiairesDetail:  [],
+          dateDebut:            f.dateDebut,
+          dureeGarantie:        String(f.dureeAns),
+          prime:                String(primeFinale),
+          statut:               "ACTIF",
+          propositionRef:       convertProp.reference,
+          policeId:             policeId,
+          nbAdultes:            f.nbAdultes,
+          nbEnfants:            f.nbEnfants,
+          nbPersonnesAgees:     f.nbPersonnesAgees,
+          typeGarantie:         f.typeGarantie,
+          tauxRemboursement:    f.tauxRemboursement,
+          tarifsPersoAdulte:    f.tarifsPersoAdulte,
+          tarifsPersoEnfant:    f.tarifsPersoEnfant,
+          tarifsPersoAdulteAge: f.tarifsPersoAdulteAge,
+          observations:         f.observations,
         });
       } else if (convertProp.groupe) {
         const g = convertProp.groupe;
         await DataService.createGroupe({
-          entreprise:    g.entreprise,
-          secteur:       g.secteur,
-          debut:         g.dateDebut,
-          dureeGarantie: String(g.dureeAns),
-          prime:         String(primeFinale),
-          statut:        "ACTIVE",
-          propositionRef: convertProp.reference,
-          employes:      g.nbAdultes + g.nbEnfants + g.nbPersonnesAgees,
-          assures:       g.nbAdultes + g.nbEnfants + g.nbPersonnesAgees,
+          entreprise:           g.entreprise,
+          secteur:              g.secteur,
+          contactNom:           g.contactNom,
+          contactEmail:         g.contactEmail,
+          contactTel:           g.contactTel,
+          debut:                g.dateDebut,
+          dureeGarantie:        String(g.dureeAns),
+          prime:                String(primeFinale),
+          statut:               "ACTIF",
+          propositionRef:       convertProp.reference,
+          policeId:             policeId,
+          employes:             g.nbAdultes + g.nbEnfants + g.nbPersonnesAgees,
+          assures:              g.nbAdultes + g.nbEnfants + g.nbPersonnesAgees,
+          nbAdultes:            g.nbAdultes,
+          nbEnfants:            g.nbEnfants,
+          nbPersonnesAgees:     g.nbPersonnesAgees,
+          typeGarantie:         g.typeGarantie,
+          tauxRemboursement:    g.tauxRemboursement,
+          tarifsPersoAdulte:    g.tarifsPersoAdulte,
+          tarifsPersoEnfant:    g.tarifsPersoEnfant,
+          tarifsPersoAdulteAge: g.tarifsPersoAdulteAge,
+          observations:         g.observations,
         });
       }
 
       // 3. Marquer la proposition comme convertie
-      DataService.updateProposition(convertProp.id, { statut: "convertie", policeId });
-      reload();
+      await DataService.updateProposition(convertProp.id, { statut: "convertie", policeId });
+      await reload();
       toast.success(`Police créée — ${convertProp.reference} · ${primeFinale.toLocaleString("fr-FR")} FCFA`);
       setConvertProp(null);
       navigate(convertProp.famille ? "/admin/maladie-famille" : "/admin/maladie-groupe");
@@ -285,10 +332,10 @@ export default function PropositionsPage() {
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteId) return;
-    DataService.deleteProposition(deleteId);
-    reload();
+    await DataService.deleteProposition(deleteId);
+    await reload();
     setDeleteId(null);
     toast.success("Proposition supprimée");
   };
@@ -339,8 +386,8 @@ export default function PropositionsPage() {
               <button key={f.value} onClick={() => setFiltre(f.value)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
                   filtre === f.value
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600"
+                    ? "bg-[#1B5299] text-white border-[#1B5299] shadow-sm"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-[#1B5299] hover:text-[#1B5299]"
                 }`}>
                 {f.label}
                 {counts[f.value] != null && (
@@ -520,50 +567,20 @@ export default function PropositionsPage() {
 
 function buildPolicePayload(prop: Proposition, primeFinale: number): any {
   const now = new Date().toISOString().slice(0, 10);
+  const nbTotal = prop.famille
+    ? prop.famille.nbAdultes + prop.famille.nbEnfants + prop.famille.nbPersonnesAgees
+    : prop.groupe
+      ? prop.groupe.nbAdultes + prop.groupe.nbEnfants + prop.groupe.nbPersonnesAgees
+      : 0;
 
-  if (prop.famille) {
-    const f       = prop.famille;
-    const nbTotal = f.nbAdultes + f.nbEnfants + f.nbPersonnesAgees;
-    return {
-      type:              "FAMILLE",
-      souscripteurNom:   f.souscripteurNom,
-      email:             f.souscripteurEmail,
-      telephone:         f.souscripteurTel,
-      adresse:           f.souscripteurAdresse,
-      garantie:          f.typeGarantie,
-      dateDebut:         f.dateDebut || now,
-      dureeGarantie:     String(f.dureeAns),
-      prime:             String(primeFinale),
-      tauxRemboursement: f.tauxRemboursement,
-      nbAssures:         nbTotal,
-      propositionRef:    prop.reference,
-      statut:            "Actif",
-    };
-  }
+  const nom = prop.famille?.souscripteurNom ?? prop.groupe?.entreprise ?? "Inconnu";
+  const type = prop.type === "FAMILLE" ? "FAMILLE" : "GROUPE";
 
-  if (prop.groupe) {
-    const g       = prop.groupe;
-    const nbTotal = g.nbAdultes + g.nbEnfants + g.nbPersonnesAgees;
-    return {
-      type:                 "GROUPE",
-      entreprise:           g.entreprise,
-      secteur:              g.secteur,
-      contactNom:           g.contactNom,
-      email:                g.contactEmail,
-      telephone:            g.contactTel,
-      debut:                g.dateDebut || now,
-      dureeGarantie:        String(g.dureeAns),
-      prime:                String(primeFinale),
-      tauxRemboursement:    g.tauxRemboursement,
-      employes:             nbTotal,
-      assures:              nbTotal,
-      tarifsPersoAdulte:    g.tarifsPersoAdulte,
-      tarifsPersoEnfant:    g.tarifsPersoEnfant,
-      tarifsPersoAdulteAge: g.tarifsPersoAdulteAge,
-      propositionRef:       prop.reference,
-      statut:               "Actif",
-    };
-  }
-
-  throw new Error("Proposition sans données famille ou groupe");
+  return {
+    numero:       "POL-" + Date.now(),
+    type,
+    montantPrime: primeFinale,
+    couverture:   `${prop.famille?.typeGarantie ?? prop.groupe?.typeGarantie ?? "Standard"} — ${nbTotal} assuré(s) — ${nom}`,
+    statut:       "ACTIVE",
+  };
 }

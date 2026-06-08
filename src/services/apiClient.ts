@@ -1,25 +1,49 @@
-// API Client - connecté au backend Spring Boot sur http://localhost:3001/api
+// API Client — token stocké en mémoire (jamais dans localStorage/sessionStorage)
+// Le refresh_token voyage uniquement via cookie httpOnly géré par le backend
+import { toUserMessage } from '@/lib/errorMessages';
+
 export class ApiClient {
   private baseURL: string;
   private timeout: number;
 
-  // Singleton pour éviter plusieurs appels refresh simultanés
+  // ─── Token en mémoire ─────────────────────────────────────────────────────
+  // Inaccessible depuis la console ou un script injecté via localStorage/sessionStorage.
+  // Perdu au rechargement → restauré automatiquement par tryRefresh() via cookie httpOnly.
+  private accessToken: string | null = null;
+
+  // Singleton : plusieurs requêtes 401 simultanées ne déclenchent qu'un seul appel refresh
   private refreshPromise: Promise<string> | null = null;
 
   constructor() {
-    this.baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+    const envUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+    this.baseURL = envUrl ? envUrl.replace(/\/+$/, '') : '/api';
     this.timeout = parseInt(import.meta.env.VITE_API_TIMEOUT || '10000');
   }
 
+  // ─── Gestion du token ─────────────────────────────────────────────────────
+
+  setToken(token: string | null): void {
+    this.accessToken = token;
+  }
+
+  getToken(): string | null {
+    return this.accessToken;
+  }
+
+  hasToken(): boolean {
+    return this.accessToken !== null;
+  }
+
+  // ─── Requête principale ───────────────────────────────────────────────────
+
   async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
-    const token = sessionStorage.getItem('auth_token');
 
     const config: RequestInit = {
-      credentials: 'include',           // envoie le cookie httpOnly refresh_token automatiquement
+      credentials: 'include', // envoie le cookie httpOnly refresh_token automatiquement
       headers: {
         'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(this.accessToken ? { Authorization: `Bearer ${this.accessToken}` } : {}),
         ...options.headers,
       },
       ...options,
@@ -37,39 +61,55 @@ export class ApiClient {
         const msg = errorData.message || errorData.data || `HTTP ${response.status}`;
 
         if (response.status === 401) {
-          // Endpoints d'auth → pas de retry, on propage le message
+          // Endpoints auth → pas de retry (évite la récursion infinie)
           if (endpoint.includes('/auth/')) {
             throw new Error(msg);
           }
 
-          // Autre endpoint → tenter un refresh silencieux
+          // Autre endpoint → refresh silencieux puis retry
           try {
             const newToken = await this.tryRefresh();
-            // Retry la requête originale avec le nouveau token
             return this.request<T>(endpoint, {
               ...options,
               headers: { ...options.headers, Authorization: `Bearer ${newToken}` },
             });
           } catch {
-            sessionStorage.removeItem('auth_token');
-            sessionStorage.removeItem('refresh_token');
+            this.accessToken = null;
             window.dispatchEvent(new CustomEvent('auth:expired'));
             throw new Error('Session expirée. Veuillez vous reconnecter.');
           }
         }
 
-        throw new Error(msg);
+        if (response.status === 403) {
+          window.dispatchEvent(new CustomEvent('api:forbidden', { detail: { endpoint, message: msg } }));
+          throw new Error("Accès refusé. Vous n'avez pas les droits nécessaires.");
+        }
+
+        if (response.status === 429) {
+          throw new Error('Trop de requêtes. Veuillez patienter avant de réessayer.');
+        }
+
+        if (response.status >= 500) {
+          throw new Error("Erreur serveur. Veuillez réessayer ou contacter l'administrateur.");
+        }
+
+        // Mapper le message technique vers un message lisible pour l'utilisateur
+        throw new Error(toUserMessage(msg));
       }
 
       const json = await response.json();
-      // Le backend Spring Boot retourne { success, data, message }
-      // On extrait data si présent, sinon on retourne le JSON brut
+      // Le backend retourne { success, data, message } → on extrait data
       return (json && json.success !== undefined ? json.data : json) as T;
+
     } catch (error) {
       clearTimeout(timeoutId);
       if (error instanceof Error) {
         if (error.name === 'AbortError') throw new Error('Délai de connexion dépassé');
-        if (error.message.includes('fetch') || error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
+        if (
+          error.message.includes('fetch') ||
+          error.message.includes('NetworkError') ||
+          error.message.includes('Failed to fetch')
+        ) {
           throw new Error('Failed to fetch');
         }
         throw error;
@@ -78,14 +118,15 @@ export class ApiClient {
     }
   }
 
-  private async tryRefresh(): Promise<string> {
-    // Plusieurs requêtes 401 simultanées ne déclenchent qu'un seul appel refresh
+  // ─── Refresh silencieux ───────────────────────────────────────────────────
+
+  async tryRefresh(): Promise<string> {
     if (this.refreshPromise) return this.refreshPromise;
 
     this.refreshPromise = (async () => {
-      // Le cookie httpOnly refresh_token est envoyé automatiquement grâce à credentials:'include'
+      // Le cookie httpOnly refresh_token est envoyé automatiquement (credentials:'include')
       const res = await this.request<{ token: string }>('/auth/refresh', { method: 'POST' });
-      sessionStorage.setItem('auth_token', res.token);
+      this.accessToken = res.token;
       return res.token;
     })().finally(() => {
       this.refreshPromise = null;
@@ -94,23 +135,28 @@ export class ApiClient {
     return this.refreshPromise;
   }
 
-  // Auth
+  // ─── Auth ─────────────────────────────────────────────────────────────────
+
   async login(credentials: { email: string; password: string }) {
-    return this.request<{ user: any; token: string; refreshToken: string }>('/auth/login', {
+    return this.request<{ user: any; token: string }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
   }
 
-  async register(userData: { email: string; password: string; fullName: string; role: string; organization?: string; telephone?: string; adresse?: string }) {
-    return this.request<{ user: any; token: string; refreshToken: string | null }>('/auth/register', {
+  async register(userData: {
+    email: string;
+    password: string;
+    fullName: string;
+    role: string;
+    organization?: string;
+    telephone?: string;
+    adresse?: string;
+  }) {
+    return this.request<{ user: any; token: string | null }>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(userData),
     });
-  }
-
-  async getNotifications() {
-    return this.request<any[]>('/notifications');
   }
 
   async logout() {
@@ -121,7 +167,30 @@ export class ApiClient {
     return this.request<any>('/auth/me');
   }
 
-  // Users
+  // ─── Notifications ────────────────────────────────────────────────────────
+
+  async getNotifications() {
+    return this.request<any[]>('/notifications');
+  }
+
+  async markNotificationRead(dbId: number) {
+    return this.request(`/notifications/${dbId}/read`, { method: 'PATCH' });
+  }
+
+  async markAllNotificationsRead() {
+    return this.request('/notifications/read-all', { method: 'PATCH' });
+  }
+
+  async deleteNotification(dbId: number) {
+    return this.request(`/notifications/${dbId}`, { method: 'DELETE' });
+  }
+
+  async getUnreadNotificationCount(): Promise<number> {
+    return this.request<number>('/notifications/unread-count');
+  }
+
+  // ─── Users ────────────────────────────────────────────────────────────────
+
   async getUsers() {
     return this.request<{ users: any[] }>('/users');
   }
@@ -130,17 +199,29 @@ export class ApiClient {
     return this.request(`/users/${id}`, { method: 'PUT', body: JSON.stringify(userData) });
   }
 
+  async changePassword(id: string, currentPassword: string, newPassword: string) {
+    return this.request(`/users/${id}/change-password`, {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+  }
+
   async deleteUser(id: string) {
     return this.request(`/users/${id}`, { method: 'DELETE' });
   }
 
-  // Assurés
+  // ─── Assurés ──────────────────────────────────────────────────────────────
+
   async getAssures() {
     return this.request<{ assures: any[] }>('/assures');
   }
 
   async getAssureById(id: string) {
     return this.request<any>(`/assures/${id}`);
+  }
+
+  async getMesBeneficiaires() {
+    return this.request<any[]>('/assures/mes-beneficiaires');
   }
 
   async createAssure(data: any) {
@@ -155,7 +236,8 @@ export class ApiClient {
     return this.request(`/assures/${id}`, { method: 'DELETE' });
   }
 
-  // Polices
+  // ─── Polices ──────────────────────────────────────────────────────────────
+
   async getPolices() {
     return this.request<{ polices: any[] }>('/polices');
   }
@@ -172,7 +254,8 @@ export class ApiClient {
     return this.request(`/polices/${id}`, { method: 'DELETE' });
   }
 
-  // Sinistres
+  // ─── Sinistres ────────────────────────────────────────────────────────────
+
   async getSinistres() {
     return this.request<{ sinistres: any[] }>('/sinistres');
   }
@@ -185,7 +268,8 @@ export class ApiClient {
     return this.request('/sinistres', { method: 'POST', body: JSON.stringify(data) });
   }
 
-  // Prestataires
+  // ─── Prestataires ─────────────────────────────────────────────────────────
+
   async getPrestataires() {
     return this.request<{ prestataires: any[] }>('/prestataires');
   }
@@ -202,7 +286,8 @@ export class ApiClient {
     return this.request(`/prestataires/${id}`, { method: 'DELETE' });
   }
 
-  // Consultations
+  // ─── Consultations ────────────────────────────────────────────────────────
+
   async getConsultations() {
     return this.request<{ consultations: any[] }>('/consultations');
   }
@@ -211,7 +296,8 @@ export class ApiClient {
     return this.request('/consultations', { method: 'POST', body: JSON.stringify(data) });
   }
 
-  // Prescriptions
+  // ─── Prescriptions ────────────────────────────────────────────────────────
+
   async getPrescriptions() {
     return this.request<{ prescriptions: any[] }>('/prescriptions');
   }
@@ -220,48 +306,292 @@ export class ApiClient {
     return this.request('/prescriptions', { method: 'POST', body: JSON.stringify(data) });
   }
 
-  // Familles
+  // ─── Prestations ──────────────────────────────────────────────────────────
+
+  async getPrestations() {
+    return this.request<{ prestations: any[] }>('/prestations');
+  }
+
+  async createPrestation(data: any) {
+    return this.request<any>('/prestations', { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  async getMyPrestataire() {
+    return this.request<any>('/prestataires/me');
+  }
+
+  async patchMyPrestataire(data: { telephone?: string; adresse?: string }) {
+    return this.request<any>('/prestataires/me', { method: 'PATCH', body: JSON.stringify(data) });
+  }
+
+  async patchConsultationStatut(id: number | string, statut: string, motifAnnulation?: string) {
+    return this.request<any>(`/consultations/${id}/statut`, {
+      method: 'PATCH',
+      body: JSON.stringify({ statut, ...(motifAnnulation ? { motifAnnulation } : {}) }),
+    });
+  }
+
+  async updateConsultation(id: number | string, data: any) {
+    return this.request<any>(`/consultations/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getPrestationLignes(prestationId: string) {
+    return this.request<{ lignes: any[] }>(`/prestations/${prestationId}/lignes`);
+  }
+
+  async refuserLignePrestation(ligneId: string) {
+    return this.request<any>(`/prestations/lignes/${ligneId}/refuser`, { method: 'POST' });
+  }
+
+  async createLignePrestation(prestationId: string, data: any) {
+    return this.request<any>(`/prestations/${prestationId}/lignes`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async fournirLignePrestation(ligneId: string, data: { prestataireId: number; prescriptionId?: number | null }) {
+    return this.request(`/prestations/lignes/${ligneId}/fournir`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getPrescriptionsByAssure(assureId: number) {
+    const r = await this.request<{ prescriptions: any[] }>(`/prescriptions?assureId=${assureId}`);
+    return (r as any)?.prescriptions ?? (Array.isArray(r) ? r : []);
+  }
+
+  // ─── Familles ─────────────────────────────────────────────────────────────
+
   async getFamilles() {
     return this.request<any[]>('/familles');
   }
+
   async getFamilleById(id: number) {
     return this.request<any>(`/familles/${id}`);
   }
+
   async createFamille(data: any) {
     return this.request<any>('/familles', { method: 'POST', body: JSON.stringify(data) });
   }
+
   async updateFamille(id: number, data: any) {
     return this.request<any>(`/familles/${id}`, { method: 'PUT', body: JSON.stringify(data) });
   }
+
   async deleteFamille(id: number) {
     return this.request(`/familles/${id}`, { method: 'DELETE' });
   }
 
-  // Remboursements
+  // ─── Groupes ──────────────────────────────────────────────────────────────
+
+  async getGroupes() {
+    return this.request<any[]>('/groupes');
+  }
+
+  async getGroupeById(id: number) {
+    return this.request<any>(`/groupes/${id}`);
+  }
+
+  async createGroupe(data: any) {
+    return this.request<any>('/groupes', { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  async updateGroupe(id: number, data: any) {
+    return this.request<any>(`/groupes/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  }
+
+  async deleteGroupe(id: number) {
+    return this.request(`/groupes/${id}`, { method: 'DELETE' });
+  }
+
+  // ─── Paiements de primes ──────────────────────────────────────────────────
+
+  async getPaiementsPrimes() {
+    return this.request<any[]>('/paiements-primes');
+  }
+
+  async getPaiementsPrimesByPolice(policeId: string) {
+    return this.request<any[]>(`/paiements-primes/police/${policeId}`);
+  }
+
+  async getPaiementsEnRetard() {
+    return this.request<any[]>('/paiements-primes/en-retard');
+  }
+
+  async creerPaiementPrime(data: any) {
+    return this.request<any>('/paiements-primes', { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  async payerPaiementPrime(id: string, data: { moyenPaiement: string; referenceTransaction?: string; notes?: string }) {
+    return this.request<any>(`/paiements-primes/${id}/payer`, { method: 'PUT', body: JSON.stringify(data) });
+  }
+
+  async marquerEnRetardPaiement(id: string) {
+    return this.request<any>(`/paiements-primes/${id}/retard`, { method: 'PUT' });
+  }
+
+  async supprimerPaiementPrime(id: string) {
+    return this.request(`/paiements-primes/${id}`, { method: 'DELETE' });
+  }
+
+  // ─── Avenants de contrat ──────────────────────────────────────────────────
+
+  async getAvenantsContrat() {
+    return this.request<any[]>('/avenants-contrat');
+  }
+
+  async creerAvenantContrat(data: any) {
+    return this.request<any>('/avenants-contrat', { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  async approuverAvenantContrat(id: string, commentaire?: string) {
+    return this.request<any>(`/avenants-contrat/${id}/approuver`, {
+      method: 'PUT',
+      body: JSON.stringify({ commentaire: commentaire ?? '' }),
+    });
+  }
+
+  async refuserAvenantContrat(id: string, commentaire?: string) {
+    return this.request<any>(`/avenants-contrat/${id}/refuser`, {
+      method: 'PUT',
+      body: JSON.stringify({ commentaire: commentaire ?? '' }),
+    });
+  }
+
+  async supprimerAvenantContrat(id: string) {
+    return this.request(`/avenants-contrat/${id}`, { method: 'DELETE' });
+  }
+
+  // ─── Demandes de contrat ──────────────────────────────────────────────────
+
+  async getDemandesContrat() {
+    return this.request<any[]>('/demandes-contrat');
+  }
+
+  async creerDemandeContrat(data: any) {
+    return this.request<any>('/demandes-contrat', { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  async approuverDemandeContrat(id: string, commentaire?: string) {
+    return this.request<any>(`/demandes-contrat/${id}/approuver`, {
+      method: 'PUT',
+      body: JSON.stringify({ commentaire: commentaire ?? '' }),
+    });
+  }
+
+  async refuserDemandeContrat(id: string, commentaire?: string) {
+    return this.request<any>(`/demandes-contrat/${id}/refuser`, {
+      method: 'PUT',
+      body: JSON.stringify({ commentaire: commentaire ?? '' }),
+    });
+  }
+
+  async supprimerDemandeContrat(id: string) {
+    return this.request(`/demandes-contrat/${id}`, { method: 'DELETE' });
+  }
+
+  // ─── Documents médicaux ──────────────────────────────────────────────────
+
+  async clientUploadDocument(file: File, params?: { consultationId?: number; description?: string }) {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (params?.consultationId) formData.append('consultationId', String(params.consultationId));
+    if (params?.description)    formData.append('description',    params.description);
+
+    const url = `${this.baseURL}/documents/client-upload`;
+    const response = await fetch(url, {
+      method: 'POST',
+      credentials: 'include',
+      headers: this.accessToken ? { Authorization: `Bearer ${this.accessToken}` } : {},
+      body: formData,
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ message: 'Erreur upload' }));
+      throw new Error(err.message || 'Erreur upload');
+    }
+    const json = await response.json();
+    return json.success !== undefined ? json.data : json;
+  }
+
+  async uploadDocument(file: File, params: { assureId?: number; consultationId?: number; description?: string }) {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (params.assureId)      formData.append('assureId',      String(params.assureId));
+    if (params.consultationId) formData.append('consultationId', String(params.consultationId));
+    if (params.description)   formData.append('description',   params.description);
+
+    const url = `${this.baseURL}/documents/upload`;
+    const response = await fetch(url, {
+      method: 'POST',
+      credentials: 'include',
+      headers: this.accessToken ? { Authorization: `Bearer ${this.accessToken}` } : {},
+      body: formData,
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ message: 'Erreur upload' }));
+      throw new Error(err.message || 'Erreur upload');
+    }
+    const json = await response.json();
+    return json.success !== undefined ? json.data : json;
+  }
+
+  async getDocumentsByConsultation(consultationId: number) {
+    return this.request<any[]>(`/documents/consultation/${consultationId}`);
+  }
+
+  async getDocumentsByAssure(assureId: number) {
+    return this.request<any[]>(`/documents/assure/${assureId}`);
+  }
+
+  getDocumentDownloadUrl(documentId: number) {
+    return `${this.baseURL}/documents/${documentId}/download`;
+  }
+
+  async deleteDocument(id: number) {
+    return this.request(`/documents/${id}`, { method: 'DELETE' });
+  }
+
+  // ─── Photos de profil ─────────────────────────────────────────────────────
+
+  async uploadPhoto(file: File): Promise<string> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const url = `${this.baseURL}/photos/upload`;
+    const response = await fetch(url, {
+      method: 'POST',
+      credentials: 'include',
+      headers: this.accessToken ? { Authorization: `Bearer ${this.accessToken}` } : {},
+      body: formData,
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ message: 'Erreur upload photo' }));
+      throw new Error(err.message || 'Erreur upload photo');
+    }
+    const json = await response.json();
+    const data = json.success !== undefined ? json.data : json;
+    return data.url as string;
+  }
+
+  getPhotoUrl(path: string): string {
+    if (!path) return '';
+    if (path.startsWith('data:') || path.startsWith('http')) return path;
+    const base = this.baseURL.replace(/\/api$/, '');
+    return path.startsWith('/api/') ? `${base}${path}` : path;
+  }
+
+  // ─── Divers ───────────────────────────────────────────────────────────────
+
   async getRemboursements() {
     return this.request<{ remboursements: any[] }>('/remboursements');
   }
 
-  // Cartes (assurés avec carte)
   async getCartes() {
     return this.request<{ cartes: any[] }>('/cartes');
-  }
-
-  // Groupes
-  async getGroupes() {
-    return this.request<any[]>('/groupes');
-  }
-  async getGroupeById(id: number) {
-    return this.request<any>(`/groupes/${id}`);
-  }
-  async createGroupe(data: any) {
-    return this.request<any>('/groupes', { method: 'POST', body: JSON.stringify(data) });
-  }
-  async updateGroupe(id: number, data: any) {
-    return this.request<any>(`/groupes/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-  }
-  async deleteGroupe(id: number) {
-    return this.request(`/groupes/${id}`, { method: 'DELETE' });
   }
 }
 

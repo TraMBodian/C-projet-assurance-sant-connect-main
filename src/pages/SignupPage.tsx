@@ -6,6 +6,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useState } from "react";
 import { useAuth, UserRole } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { isStrongPassword, PASSWORD_REQUIREMENTS_MESSAGE } from "@/lib/password";
 
 const SignupPage = () => {
   const navigate = useNavigate();
@@ -48,12 +49,8 @@ const SignupPage = () => {
       toast({ title: "Erreur", description: "La localisation est obligatoire pour les prestataires", variant: "destructive" });
       return;
     }
-    if (password.length < 8) {
-      toast({ title: "Erreur", description: "Le mot de passe doit contenir au moins 8 caractères", variant: "destructive" });
-      return;
-    }
-    if (!/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
-      toast({ title: "Erreur", description: "Le mot de passe doit contenir au moins une majuscule et un chiffre", variant: "destructive" });
+    if (!isStrongPassword(password)) {
+      toast({ title: "Erreur", description: PASSWORD_REQUIREMENTS_MESSAGE, variant: "destructive" });
       return;
     }
     if (!fullName.trim()) {
@@ -265,7 +262,7 @@ const SignupPage = () => {
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-              <p className="text-xs text-gray-400">Au moins 8 caractères, une majuscule et un chiffre</p>
+              <p className="text-xs text-gray-400">Au moins 12 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial</p>
             </div>
 
             {/* CGU */}

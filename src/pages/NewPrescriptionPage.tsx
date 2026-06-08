@@ -68,7 +68,7 @@ export default function NewPrescriptionPage() {
       await Promise.all(
         validMeds.map((m) =>
           DataService.createPrescription({
-            consultation: { id: Number(selectedConsultationId) },
+            consultationId: Number(selectedConsultationId),
             medicament: m.nom,
             dosage: m.dosage,
             duree: m.duree,

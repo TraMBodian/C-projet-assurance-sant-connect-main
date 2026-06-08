@@ -11,6 +11,7 @@ import com.assurance.sante.connect.repository.PrestataireRepository;
 import com.assurance.sante.connect.repository.UserRepository;
 import com.assurance.sante.connect.security.JwtTokenProvider;
 import com.assurance.sante.connect.security.LoginRateLimiter;
+import com.assurance.sante.connect.security.PasswordPolicy;
 import com.assurance.sante.connect.exception.UnauthorizedException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -41,8 +42,11 @@ public class AuthService {
 
         User user = userOpt.get();
 
-        if (user.getStatus() == User.UserStatus.PENDING) {
-            throw new UnauthorizedException("Votre compte est en attente de validation par un administrateur");
+        switch (user.getStatus()) {
+            case PENDING   -> throw new UnauthorizedException("Votre compte est en attente de validation par un administrateur");
+            case REJECTED  -> throw new UnauthorizedException("Votre compte a été rejeté. Contactez l'administrateur");
+            case SUSPENDED -> throw new UnauthorizedException("Votre compte est suspendu. Contactez l'administrateur");
+            default        -> {} // ACTIVE : continuer
         }
 
         rateLimiter.resetAttempts(request.getEmail());
@@ -86,6 +90,8 @@ public class AuthService {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("Cet email est déjà utilisé");
         }
+        // Politique de mot de passe forte (OWASP / santé)
+        PasswordPolicy.validate(request.getPassword());
 
         User user = User.builder()
                 .email(request.getEmail())

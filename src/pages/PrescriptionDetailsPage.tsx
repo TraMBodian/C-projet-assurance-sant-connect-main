@@ -1,22 +1,40 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Pill, User, FileText, Download, Printer, Loader2, Calendar, Stethoscope, Clock } from "@/components/ui/Icons";
+import Breadcrumb from "@/components/admin/Breadcrumb";
+import { ArrowLeft, Pill, User, FileText, Download, Printer, Loader2, Calendar, Stethoscope, Clock, CheckCircle, XCircle, AlertTriangle, Archive } from "@/components/ui/Icons";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { apiClient } from "@/services/apiClient";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
 
 export default function PrescriptionDetailsPage() {
   const { id }   = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [prescription, setPrescription] = useState<any>(null);
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [notes, setNotes] = useState("");
+
+  const isPharmacist = user?.role === "prestataire" && user?.specialite?.toLowerCase().includes("pharmac");
+  const isDoctor = user?.role === "prestataire" && !user?.specialite?.toLowerCase().includes("pharmac");
+  const isAdmin = user?.role === "admin";
+  const isClient = user?.role === "client";
 
   useEffect(() => {
     if (!id) return;
     apiClient.request<any>(`/prescriptions/${id}`)
-      .then(data => setPrescription(data))
+      .then(data => {
+        setPrescription(data);
+        setNotes(data.notes || "");
+      })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, [id]);
@@ -32,7 +50,49 @@ export default function PrescriptionDetailsPage() {
   };
   const numero = () => `ORD-${String(prescription?.id ?? "???").padStart(4, "0")}`;
 
-  // ── Impression moderne ────────────────────────────────────────────────────
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'dispensee':
+        return <Badge className="bg-green-100 text-green-700 border-green-200"><CheckCircle className="w-3 h-3 mr-1" /> Dispensée</Badge>;
+      case 'annulee':
+        return <Badge className="bg-red-100 text-red-700 border-red-200"><XCircle className="w-3 h-3 mr-1" /> Annulée</Badge>;
+      case 'en_attente':
+      default:
+        return <Badge className="bg-orange-100 text-orange-700 border-orange-200"><Clock className="w-3 h-3 mr-1" /> En attente</Badge>;
+    }
+  };
+
+  const handleStatusUpdate = async (newStatus: string) => {
+    if (!prescription?.id) return;
+
+    setUpdatingStatus(true);
+    try {
+      const updateData = {
+        status: newStatus,
+        notes: notes.trim(),
+        dispensedAt: newStatus === 'dispensee' ? new Date().toISOString() : null,
+        dispensedBy: newStatus === 'dispensee' ? user?.id : null
+      };
+
+      await apiClient.request(`/prescriptions/${prescription.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(updateData)
+      });
+
+      setPrescription(prev => ({ ...prev, ...updateData }));
+      toast.success(`Prescription ${newStatus === 'dispensee' ? 'dispensée' : 'annulée'} avec succès`);
+    } catch (err: any) {
+      toast.error(err?.message || "Erreur lors de la mise à jour");
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const canManagePrescription = () => {
+    if (isAdmin) return true;
+    if (isPharmacist && prescription?.status !== 'dispensee') return true;
+    return false;
+  };
   const handlePrint = () => {
     if (!prescription) return;
     const origin = window.location.origin;
@@ -508,7 +568,96 @@ export default function PrescriptionDetailsPage() {
         <ArrowLeft className="w-4 h-4 mr-2" /> Retour
       </Button>
     }>
-      <div className="max-w-3xl mx-auto space-y-5">
+      <div className="max-w-3xl mx-auto space-y-5 px-4 sm:px-6">
+        <Breadcrumb items={[
+          { label: "Accueil", path: "/dashboard" },
+          { label: "Prescriptions", path: "/prescriptions" },
+          { label: `Ordonnance ${numero()}` },
+        ]} />
+
+        {/* Status et contrôles */}
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <h3 className="font-semibold text-gray-900">Statut de l'ordonnance</h3>
+              {getStatusBadge(prescription.status)}
+            </div>
+            {canManagePrescription() && (
+              <div className="flex items-center gap-2">
+                {prescription.status === 'en_attente' && isPharmacist && (
+                  <>
+                    <Button
+                      size="sm"
+                      onClick={() => handleStatusUpdate('dispensee')}
+                      disabled={updatingStatus}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      {updatingStatus ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                      Dispenser
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleStatusUpdate('annulee')}
+                      disabled={updatingStatus}
+                      className="border-red-200 text-red-600 hover:bg-red-50"
+                    >
+                      {updatingStatus ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <XCircle className="w-4 h-4 mr-2" />}
+                      Annuler
+                    </Button>
+                  </>
+                )}
+                {isAdmin && prescription.status === 'dispensee' && (
+                  <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                    <Archive className="w-3 h-3 mr-1" /> Archivée
+                  </Badge>
+                )}
+              </div>
+            )}
+          </div>
+
+          {canManagePrescription() && prescription.status === 'en_attente' && (
+            <div className="space-y-3">
+              <div>
+                <Label htmlFor="notes" className="text-sm font-medium text-gray-700">
+                  Notes du pharmacien
+                </Label>
+                <Textarea
+                  id="notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Ajouter des notes sur la dispensation..."
+                  className="mt-1"
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+
+          {prescription.status === 'dispensee' && prescription.dispensedAt && (
+            <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center gap-2 text-green-700">
+                <CheckCircle className="w-4 h-4" />
+                <span className="font-medium">Dispensée le {new Date(prescription.dispensedAt).toLocaleDateString('fr-FR')}</span>
+              </div>
+              {prescription.notes && (
+                <p className="text-sm text-green-600 mt-1">{prescription.notes}</p>
+              )}
+            </div>
+          )}
+
+          {prescription.status === 'annulee' && (
+            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-center gap-2 text-red-700">
+                <XCircle className="w-4 h-4" />
+                <span className="font-medium">Ordonnance annulée</span>
+              </div>
+              {prescription.notes && (
+                <p className="text-sm text-red-600 mt-1">{prescription.notes}</p>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Boutons */}
         <div className="flex items-center justify-end gap-2">

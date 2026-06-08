@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Plus, Search, Filter, Eye, Loader2, Users, UserCheck, X, Zap } from "@/components/ui/Icons";
+import { Plus, Search, Filter, Eye, Loader2, Users, UserCheck, X, Zap, Download } from "@/components/ui/Icons";
 import { useNavigate } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { DataService } from "@/services/dataService";
@@ -8,6 +8,7 @@ import { Assure } from "@/types/insurance";
 import { usePusherChannel } from "@/hooks/usePusherChannel";
 import { CH, EV, type AssureEventPayload } from "@/services/pusherService";
 import { toast } from "sonner";
+import TablePagination from "@/components/admin/TablePagination";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -38,6 +39,22 @@ const lienStyle: Record<string, string> = {
   Enfant:    "bg-green-100 text-green-700 border-green-200",
 };
 
+function exportCSV(data: any[], filename: string) {
+  const headers = ["Prénom", "Nom", "N° Assuré", "Date Naissance", "Sexe", "N° Pièce", "Lien", "Date Adhésion", "Salaire", "Garantie", "Type", "Statut"];
+  const rows = data.map(a => [
+    a.prenom ?? "", a.nom ?? "", a.numero ?? "",
+    a.dateNaissance ?? "", a.sexe ?? "", a.pieceIdentite ?? "",
+    a.lien ?? "", a.dateAdhesion ?? a.dateDebut ?? "",
+    a.salaire ?? "", a.garantie ?? "", a.type ?? "", a.statut ?? "",
+  ]);
+  const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
 function fmtDate(d?: string) {
   if (!d) return "—";
   // déjà JJ/MM/AAAA ?
@@ -58,8 +75,14 @@ export default function AssuresPage() {
   const [error,        setError]        = useState<string | null>(null);
   const [typeFilter,   setTypeFilter]   = useState<"all" | "FAMILLE" | "GROUPE">("all");
   const [statutFilter, setStatutFilter] = useState<"all" | "ACTIF" | "SUSPENDU" | "RESILIE">("all");
+  // reset page on filter/search change
+  const setTypeFilterAndReset   = (v: typeof typeFilter)   => { setTypeFilter(v);   setPage(1); };
+  const setStatutFilterAndReset = (v: typeof statutFilter) => { setStatutFilter(v); setPage(1); };
+  const setSearchAndReset       = (v: string)              => { setSearch(v);       setPage(1); };
   const [showFilters,  setShowFilters]  = useState(false);
   const [liveCount,    setLiveCount]    = useState(0);
+  const [page,         setPage]         = useState(1);
+  const [pageSize,     setPageSize]     = useState(20);
 
   useEffect(() => {
     (async () => {
@@ -119,6 +142,11 @@ export default function AssuresPage() {
     });
   }, [assures, search, typeFilter, statutFilter]);
 
+  const paginated = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, page, pageSize]);
+
   // Stats rapides
   const nbFamille = assures.filter(a => (a.type || "").toUpperCase() === "FAMILLE").length;
   const nbGroupe  = assures.filter(a => (a.type || "").toUpperCase() === "GROUPE").length;
@@ -126,10 +154,10 @@ export default function AssuresPage() {
 
   return (
     <AppLayout title="Gestion des Assurés">
-      <div className="space-y-4 w-full">
+      <div className="space-y-4 w-full px-4 sm:px-6">
 
         {/* ── Statistiques rapides ── */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 xs:grid-cols-3 sm:grid-cols-3 gap-3">
           {[
             { label: "Total assurés", value: assures.length, icon: <Users size={16} />, color: "text-blue-600", bg: "bg-blue-50" },
             { label: "Famille",       value: nbFamille,      icon: <UserCheck size={16} />, color: "text-purple-600", bg: "bg-purple-50" },
@@ -162,12 +190,12 @@ export default function AssuresPage() {
               <Search size={14} className="text-muted-foreground shrink-0" />
               <input
                 value={search}
-                onChange={e => setSearch(e.target.value)}
+                onChange={e => setSearchAndReset(e.target.value)}
                 placeholder="Nom, N° assuré, CNI, lien…"
                 className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
               />
               {search && (
-                <button onClick={() => setSearch("")} className="text-muted-foreground hover:text-foreground">
+                <button onClick={() => setSearchAndReset("")} className="text-muted-foreground hover:text-foreground">
                   <X size={13} />
                 </button>
               )}
@@ -179,12 +207,22 @@ export default function AssuresPage() {
               <Filter size={14} />
             </button>
           </div>
-          <button
-            onClick={() => navigate('/admin/assures/new')}
-            className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-brand hover:bg-brand-dark text-white text-sm font-medium shadow-sm transition-all whitespace-nowrap"
-          >
-            <Plus size={14} /> Nouvel assuré
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => exportCSV(filtered, `assures-${new Date().toISOString().slice(0,10)}.csv`)}
+              title="Exporter en CSV"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:border-[#1B5299] hover:text-[#1B5299] text-xs font-medium transition-colors shrink-0"
+            >
+              <Download size={13} />
+              CSV
+            </button>
+            <button
+              onClick={() => navigate('/admin/assures/new')}
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-[#1B5299] hover:bg-[#0F2D5A] text-white text-sm font-medium shadow-sm transition-all whitespace-nowrap"
+            >
+              <Plus size={14} /> Nouvel assuré
+            </button>
+          </div>
         </div>
 
         {/* ── Filtres ── */}
@@ -195,7 +233,7 @@ export default function AssuresPage() {
               {(["all", "FAMILLE", "GROUPE"] as const).map(t => (
                 <button
                   key={t}
-                  onClick={() => setTypeFilter(t)}
+                  onClick={() => setTypeFilterAndReset(t)}
                   className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${typeFilter === t ? "bg-brand text-white border-brand" : "bg-white border-gray-200 text-gray-600 hover:border-brand/40"}`}
                 >
                   {t === "all" ? "Tous" : typeLabel[t]}
@@ -207,7 +245,7 @@ export default function AssuresPage() {
               {(["all", "ACTIF", "SUSPENDU", "RESILIE"] as const).map(s => (
                 <button
                   key={s}
-                  onClick={() => setStatutFilter(s)}
+                  onClick={() => setStatutFilterAndReset(s)}
                   className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${statutFilter === s ? "bg-brand text-white border-brand" : "bg-white border-gray-200 text-gray-600 hover:border-brand/40"}`}
                 >
                   {s === "all" ? "Tous" : s === "ACTIF" ? "Actif" : s === "SUSPENDU" ? "Suspendu" : "Résilié"}
@@ -250,6 +288,7 @@ export default function AssuresPage() {
               </div>
             </div>
 
+
             {/* ── Tableau desktop ── */}
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-xs">
@@ -270,7 +309,7 @@ export default function AssuresPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((a, i) => (
+                  {paginated.map((a, i) => (
                     <motion.tr
                       key={a.id}
                       initial={{ opacity: 0 }}
@@ -365,7 +404,7 @@ export default function AssuresPage() {
 
             {/* ── Vue carte mobile ── */}
             <div className="md:hidden space-y-2 p-3">
-              {filtered.map((a, i) => (
+              {paginated.map((a, i) => (
                 <motion.div
                   key={a.id}
                   initial={{ opacity: 0 }}
@@ -413,13 +452,24 @@ export default function AssuresPage() {
                 <p className="text-sm">Aucun assuré trouvé</p>
                 {(search || typeFilter !== "all" || statutFilter !== "all") && (
                   <button
-                    onClick={() => { setSearch(""); setTypeFilter("all"); setStatutFilter("all"); }}
+                    onClick={() => { setSearch(""); setTypeFilter("all"); setStatutFilter("all"); setPage(1); }}
                     className="text-xs text-blue-600 hover:underline mt-1"
                   >
                     Réinitialiser les filtres
                   </button>
                 )}
               </div>
+            )}
+
+            {/* ── Pagination ── */}
+            {filtered.length > 0 && (
+              <TablePagination
+                page={page}
+                pageSize={pageSize}
+                total={filtered.length}
+                onPageChange={(p) => setPage(p)}
+                onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
+              />
             )}
           </motion.div>
         )}

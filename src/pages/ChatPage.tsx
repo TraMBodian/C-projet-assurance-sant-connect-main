@@ -8,7 +8,7 @@ import { Send, Search } from "@/components/ui/Icons";
 
 const BRAND = "#1B5299";
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api";
-const WS_URL   = API_BASE.replace("/api", "").replace("http", "ws") + "/ws";
+const WS_URL = API_BASE.replace("/api", "") + "/ws";
 
 interface Msg  { id?: number; senderId: number; receiverId: number; content: string; senderName: string; createdAt: string; }
 interface Contact { id: number; fullName: string; email: string; role: string; lastMessage?: string; unread: number; }

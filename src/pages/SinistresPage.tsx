@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, CheckCircle, XCircle, Clock, Banknote, AlertTriangle,
-  Loader2, AlertCircle, FileWarning, Plus, Camera, MapPin, X,
+  Loader2, AlertCircle, FileWarning, Plus, Camera, X, Download,
 } from "@/components/ui/Icons";
+import { apiClient } from "@/services/apiClient";
 import { useNavigate } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -29,15 +30,41 @@ const TYPE_LABELS: Record<string, string> = {
   BIOLOGIE:     "Biologie",
 };
 
+function exportCSV(data: any[]) {
+  const headers = ["N° Sinistre", "Assuré", "Type", "Statut", "Montant réclamé", "Montant approuvé", "Date sinistre"];
+  const rows = data.map(s => [
+    s.numero ?? s.id ?? "",
+    s.assure ? `${s.assure.nom} ${s.assure.prenom}` : "",
+    s.type ?? "",
+    s.statut ?? "",
+    s.montantReclamation ?? "",
+    s.montantApprouve ?? "",
+    s.dateSinistre ? new Date(s.dateSinistre).toLocaleDateString("fr-FR") : "",
+  ]);
+  const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `sinistres-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+  URL.revokeObjectURL(url);
+}
+
 // ─── Formulaire déclaration sinistre (client) ─────────────────────────────────
 
-function DeclareSinistreModal({ onClose }: { onClose: () => void }) {
+function DeclareSinistreModal({ onClose, polices, user }: { onClose: () => void; polices: any[]; user: any; }) {
   const { toast } = useToast();
   const [form, setForm]       = useState({ type: "CONSULTATION", montant: "", description: "", date: "" });
+  const [selectedPoliceId, setSelectedPoliceId] = useState<number | null>(polices.length > 0 ? polices[0].id : null);
   const [loading, setLoading] = useState(false);
   const [photo, setPhoto]     = useState<File | null>(null);
 
   const set = (k: string, v: string) => setForm(prev => ({ ...prev, [k]: v }));
+
+  useEffect(() => {
+    if (polices.length && selectedPoliceId == null) {
+      setSelectedPoliceId(polices[0].id);
+    }
+  }, [polices, selectedPoliceId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,18 +72,41 @@ function DeclareSinistreModal({ onClose }: { onClose: () => void }) {
       toast({ title: "Champs requis", description: "Veuillez renseigner la date et le montant.", variant: "destructive" });
       return;
     }
+    if (!user?.id || !selectedPoliceId) {
+      toast({ title: "Police requise", description: "Sélectionnez une police valide avant de déclarer le sinistre.", variant: "destructive" });
+      return;
+    }
     setLoading(true);
     try {
+      // 1. Upload du justificatif si présent
+      if (photo) {
+        try {
+          await apiClient.clientUploadDocument(photo, {
+            description: `Justificatif sinistre ${form.type} – ${form.date}`,
+          });
+        } catch (uploadErr) {
+          console.error("Upload justificatif échoué", uploadErr);
+          toast({
+            title: "Avertissement",
+            description: "Le justificatif n'a pas pu être joint. La déclaration sera soumise sans pièce jointe.",
+            variant: "destructive",
+          });
+        }
+      }
+      // 2. Création du sinistre
       await DataService.createSinistre({
-        type:              form.type,
+        type:               form.type,
         montantReclamation: Number(form.montant),
-        description:       form.description,
-        dateSinistre:      form.date,
-        statut:            "EN_ATTENTE",
+        description:        form.description,
+        dateSinistre:       form.date,
+        statut:             "EN_ATTENTE",
+        policeId:           selectedPoliceId,
+        assureId:           Number(user.id),
       });
       toast({ title: "Sinistre déclaré", description: "Votre déclaration a été enregistrée. Suivi sous 48h." });
       onClose();
-    } catch {
+    } catch (error) {
+      console.error("Sinistre submission failed", error);
       toast({ title: "Erreur", description: "Impossible de soumettre la déclaration.", variant: "destructive" });
     } finally {
       setLoading(false);
@@ -102,6 +152,30 @@ function DeclareSinistreModal({ onClose }: { onClose: () => void }) {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Police */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
+              Police liée *
+            </label>
+            {polices.length === 0 ? (
+              <div className="px-3 py-3 rounded-lg border border-border bg-muted text-sm text-muted-foreground">
+                Aucune police disponible. Veuillez d'abord enregistrer une police.
+              </div>
+            ) : (
+              <select
+                value={selectedPoliceId ?? polices[0]?.id}
+                onChange={(e) => setSelectedPoliceId(Number(e.target.value))}
+                className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {polices.map((police) => (
+                  <option key={police.id} value={police.id}>
+                    {police.numero} – {police.couverture || police.type || "Police"}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           {/* Date */}
@@ -173,18 +247,12 @@ function DeclareSinistreModal({ onClose }: { onClose: () => void }) {
             </label>
           </div>
 
-          {/* Géolocalisation info */}
-          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2">
-            <MapPin size={13} className="shrink-0" />
-            <span>Votre position sera utilisée pour valider l'établissement de soins (optionnel).</span>
-          </div>
-
           {/* Actions */}
           <div className="flex gap-2 pt-1">
             <Button type="button" variant="outline" className="flex-1" onClick={onClose} disabled={loading}>
               Annuler
             </Button>
-            <Button type="submit" className="flex-1 gap-2" disabled={loading}>
+            <Button type="submit" className="flex-1 gap-2" disabled={loading || polices.length === 0}>
               {loading ? <Loader2 size={15} className="animate-spin" /> : null}
               Soumettre
             </Button>
@@ -205,16 +273,23 @@ export default function SinistresPage() {
   const [search,    setSearch]    = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [sinistres, setSinistres] = useState<any[]>([]);
+  const [polices, setPolices] = useState<any[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState(false);
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
-    DataService.getSinistres()
+    DataService.getSinistres(user)
       .then((list) => setSinistres(list ?? []))
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [showModal]);
+
+    if (isClient && user) {
+      DataService.getPolices(user)
+        .then((list) => setPolices(list ?? []))
+        .catch(() => setPolices([]));
+    }
+  }, [user, showModal]);
 
   const assureNom = (s: any) =>
     s.assure ? `${s.assure.nom} ${s.assure.prenom}` : "";
@@ -235,7 +310,7 @@ export default function SinistresPage() {
 
   return (
     <AppLayout title={isClient ? "Mes Sinistres" : "Gestion des Sinistres"}>
-      <div className="space-y-4 sm:space-y-5">
+      <div className="space-y-4 sm:space-y-5 px-4 sm:px-6">
 
         {/* ── Compteurs statuts ──────────────────────────────────────── */}
         {!loading && !error && (
@@ -266,15 +341,25 @@ export default function SinistresPage() {
             </div>
           </div>
 
-          {isClient && (
-            <Button
-              onClick={() => setShowModal(true)}
-              className="gap-2 whitespace-nowrap shrink-0"
+          <div className="flex gap-2 shrink-0">
+            <button
+              onClick={() => exportCSV(filtered)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-input bg-background hover:bg-muted text-sm font-medium transition-colors whitespace-nowrap"
+              title="Exporter en CSV"
             >
-              <Plus size={15} />
-              Déclarer un sinistre
-            </Button>
-          )}
+              <Download size={14} />
+              <span className="hidden sm:inline">CSV</span>
+            </button>
+            {isClient && (
+              <Button
+                onClick={() => setShowModal(true)}
+                className="gap-2 whitespace-nowrap"
+              >
+                <Plus size={15} />
+                Déclarer un sinistre
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* ── Filtres type ────────────────────────────────────────────── */}
@@ -283,10 +368,10 @@ export default function SinistresPage() {
             <button
               key={key}
               onClick={() => setTypeFilter(key)}
-              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${
+              className={`px-4 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap shrink-0 border ${
                 typeFilter === key
-                  ? "bg-brand text-white"
-                  : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
+                  ? "bg-[#1B5299] text-white border-[#1B5299] shadow-sm"
+                  : "bg-white text-gray-600 border-gray-200 hover:border-[#1B5299] hover:text-[#1B5299]"
               }`}
             >
               {label}
@@ -402,7 +487,7 @@ export default function SinistresPage() {
 
       {/* ── Modale déclaration sinistre ────────────────────────────── */}
       <AnimatePresence>
-        {showModal && <DeclareSinistreModal onClose={() => setShowModal(false)} />}
+        {showModal && <DeclareSinistreModal onClose={() => setShowModal(false)} polices={polices} user={user} />}
       </AnimatePresence>
     </AppLayout>
   );

@@ -7,6 +7,7 @@ import {
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { DataService } from "@/services/dataService";
+import { useAuth } from "@/context/AuthContext";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend,
@@ -54,6 +55,9 @@ function exportCSV(rows: any[]) {
 // ─── Composant ────────────────────────────────────────────────────────────────
 
 export default function RemboursementsPage() {
+  const { user } = useAuth();
+  const isClient = user?.role === "client";
+
   const [search,    setSearch]    = useState("");
   const [sinistres, setSinistres] = useState<any[]>([]);
   const [loading,   setLoading]   = useState(true);
@@ -61,11 +65,11 @@ export default function RemboursementsPage() {
   const [showChart, setShowChart] = useState(true);
 
   useEffect(() => {
-    DataService.getSinistres()
+    DataService.getSinistres(user)
       .then((list) => setSinistres(list ?? []))
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, []);
+  }, [user]);
 
   const remboursements = useMemo(
     () => sinistres.filter(s => s.statut === "PAYE" || s.statut === "APPROUVE"),
@@ -85,6 +89,10 @@ export default function RemboursementsPage() {
   const totalPaye   = sinistres.filter(s => s.statut === "PAYE").reduce((a, s) => a + Number(s.montantAccorde ?? 0), 0);
   const enCours     = sinistres.filter(s => s.statut === "APPROUVE").length;
   const effectues   = sinistres.filter(s => s.statut === "PAYE").length;
+
+  const totalReclameKpi   = remboursements.reduce((a, s) => a + Number(s.montantReclamation ?? 0), 0);
+  const totalAccordeKpi   = remboursements.reduce((a, s) => a + Number(s.montantAccorde ?? 0), 0);
+  const tauxCouverture    = totalReclameKpi > 0 ? Math.round((totalAccordeKpi / totalReclameKpi) * 100) : 0;
 
   // ── Graphique mensuel (12 derniers mois) ────────────────────────────────────
 
@@ -112,15 +120,16 @@ export default function RemboursementsPage() {
 
   return (
     <AppLayout title="Suivi des Remboursements">
-      <div className="space-y-4 sm:space-y-5">
+      <div className="space-y-4 sm:space-y-5 px-4 sm:px-6">
 
         {/* ── Compteurs ──────────────────────────────────────────────── */}
         {!loading && !error && (
-          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
             {[
-              { label: "Payés",           value: effectues, bg: "bg-green-50",  border: "border-green-200",  iconBg: "bg-green-600",  num: "text-green-900",  sub: "text-green-700",  icon: <CheckCircle size={15} />, fmt: false },
-              { label: "Approuvés",       value: enCours,   bg: "bg-blue-50",   border: "border-blue-200",   iconBg: "bg-blue-600",   num: "text-blue-900",   sub: "text-blue-700",   icon: <Clock size={15} />,       fmt: false },
-              { label: "Total remboursé", value: totalPaye, bg: "bg-purple-50", border: "border-purple-200", iconBg: "bg-purple-600", num: "text-purple-900", sub: "text-purple-700", icon: <TrendingUp size={15} />,  fmt: true  },
+              { label: "Payés",              value: effectues,       bg: "bg-green-50",   border: "border-green-200",   iconBg: "bg-green-600",   num: "text-green-900",   sub: "text-green-700",   icon: <CheckCircle size={15} />, fmt: false },
+              { label: "Approuvés",          value: enCours,         bg: "bg-blue-50",    border: "border-blue-200",    iconBg: "bg-blue-600",    num: "text-blue-900",    sub: "text-blue-700",    icon: <Clock size={15} />,       fmt: false },
+              { label: "Total remboursé",    value: totalPaye,       bg: "bg-purple-50",  border: "border-purple-200",  iconBg: "bg-purple-600",  num: "text-purple-900",  sub: "text-purple-700",  icon: <TrendingUp size={15} />,  fmt: true  },
+              { label: "Taux de couverture", value: tauxCouverture,  bg: "bg-orange-50",  border: "border-orange-200",  iconBg: "bg-orange-600",  num: "text-orange-900",  sub: "text-orange-700",  icon: <TrendingUp size={15} />,  fmt: false, suffix: "%" },
             ].map(c => (
               <div key={c.label} className={`${c.bg} border ${c.border} rounded-xl p-2.5 sm:p-4 flex items-center gap-2 sm:gap-3`}>
                 <div className={`w-8 h-8 sm:w-10 sm:h-10 ${c.iconBg} rounded-lg flex items-center justify-center text-white shrink-0`}>
@@ -128,7 +137,7 @@ export default function RemboursementsPage() {
                 </div>
                 <div className="min-w-0">
                   <p className={`text-base sm:text-xl font-bold ${c.num} leading-none truncate`}>
-                    {c.fmt ? `${fmtMontant(c.value)} F` : c.value}
+                    {c.fmt ? `${fmtMontant(c.value)} F` : `${c.value}${'suffix' in c ? c.suffix : ''}`}
                   </p>
                   <p className={`text-xs ${c.sub} truncate mt-0.5`}>{c.label}</p>
                 </div>
@@ -237,7 +246,7 @@ export default function RemboursementsPage() {
                   {/* En-tête */}
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <div className="flex items-start gap-3 min-w-0 flex-1">
-                      <div className="w-9 h-9 sm:w-11 sm:h-11 bg-gradient-to-br from-green-600 to-emerald-600 rounded-lg flex items-center justify-center text-white shrink-0">
+                      <div className="w-9 h-9 sm:w-11 sm:h-11 bg-gradient-to-br from-green-600 to-blue-600 rounded-lg flex items-center justify-center text-white shrink-0">
                         <Banknote size={17} />
                       </div>
                       <div className="min-w-0 flex-1">

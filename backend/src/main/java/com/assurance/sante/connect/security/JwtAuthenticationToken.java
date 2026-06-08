@@ -8,8 +8,8 @@ public class JwtAuthenticationToken extends AbstractAuthenticationToken {
 
     private final String email;
 
-    public JwtAuthenticationToken(String email) {
-        super(null);
+    public JwtAuthenticationToken(String email, Collection<? extends GrantedAuthority> authorities) {
+        super(authorities);
         this.email = email;
         setAuthenticated(true);
     }

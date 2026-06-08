@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { DataService } from "@/services/dataService";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,8 @@ import {
   type TypeAssure, type Beneficiaire,
 } from "./NewFamillePage";
 import { CHAPITRES } from "../ConditionsGeneralesPage";
-import { getTarifs } from "@/services/tarifService";
+import { TARIF_DEFAULTS } from "@/services/tarifService";
+import { useTarifs } from "@/hooks/useTarifs";
 
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -40,32 +41,49 @@ function isExpiringSoon(famille: any): boolean {
   return d.getTime() - Date.now() < 30 * 24 * 3600 * 1000 && d.getTime() > Date.now();
 }
 
+function isValidBenef(b: any): boolean {
+  return b !== null && typeof b === "object" && !Array.isArray(b)
+    && typeof b.nom === "string" && b.nom.trim() !== "";
+}
+
 function getBeneficiairesDetail(famille: any): Beneficiaire[] {
   const raw = famille.beneficiairesDetail;
-  if (Array.isArray(raw)) return raw;
-  if (raw && typeof raw === 'string') {
-    try {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
-    } catch {}
+
+  // Résout le tableau (direct ou sérialisé en JSON)
+  let arr: any[] | null = null;
+  if (Array.isArray(raw)) arr = raw;
+  else if (typeof raw === "string") {
+    try { const p = JSON.parse(raw); arr = Array.isArray(p) ? p : null; } catch {}
   }
+
+  if (arr !== null) {
+    // Filtre les entrées corrompues (caractères isolés, nombres, objets sans nom…)
+    const valid = arr.filter(isValidBenef);
+    if (valid.length > 0) return valid;
+  }
+
+  // Repli sur le champ beneficiaires (tableau de strings "Nom (Lien)")
   const list = famille.beneficiaires;
   if (!Array.isArray(list)) return [];
-  return list.map((b: string) => ({
-    nom:           b.replace(/ \(.+\)$/, ""),
-    lien:          (b.match(/\((.+)\)$/) || [])[1] || "",
-    type:          "adulte" as TypeAssure,
-    dateNaissance: "",
-    lieuNaissance: "",
-    email:         "",
-    telephone:     "",
-  }));
+  return list
+    .filter((b: any) => typeof b === "string" && b.trim() !== "" && !b.startsWith("undefined"))
+    .map((b: string) => ({
+      nom:           b.replace(/ \(.+\)$/, ""),
+      lien:          (b.match(/\((.+)\)$/) || [])[1] || "",
+      type:          "adulte" as TypeAssure,
+      dateNaissance: "",
+      lieuNaissance: "",
+      email:         "",
+      telephone:     "",
+    }));
 }
 
 // ─── Composant ────────────────────────────────────────────────────────────────
 
 export default function MaladieFamillePage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const pendingRef = useRef<HTMLDivElement>(null);
   const [familles, setFamilles]     = useState<any[]>([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(false);
@@ -77,7 +95,7 @@ export default function MaladieFamillePage() {
   const [showConditions, setShowConditions] = useState(false);
   const [expanded, setExpanded]           = useState<number | null>(null);
   const [mouvementFamille, setMouvementFamille] = useState<any | null>(null);
-  const tarifs = getTarifs();
+  const tarifs = useTarifs();
 
   useEffect(() => {
     DataService.getFamilles()
@@ -85,6 +103,14 @@ export default function MaladieFamillePage() {
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
+
+  // Scroll vers la section "En attente" si la notification y renvoie
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("focus") === "pending" && pendingRef.current) {
+      setTimeout(() => pendingRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 300);
+    }
+  }, [location.search, loading]);
 
   const onDelete = async (id: number) => {
     await DataService.deleteFamille(id);
@@ -100,9 +126,16 @@ export default function MaladieFamillePage() {
     }
   };
 
-  const filtered = familles.filter(f =>
-    (f.principal || "").toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = familles
+    .filter(f => (f.principal || "").toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => {
+      // "En attente" remonte toujours en tête
+      const aWait = a.statut === "En attente" ? 0 : 1;
+      const bWait = b.statut === "En attente" ? 0 : 1;
+      return aWait - bWait;
+    });
+
+  const pendingFamilles = familles.filter(f => f.statut === "En attente");
 
   // Stats globales
   const totalPersonnes = familles.reduce((s, f) => {
@@ -110,9 +143,8 @@ export default function MaladieFamillePage() {
     return s + benef.length + 1;
   }, 0);
   const totalPrime = familles.reduce((s, f) => {
-    const benef = getBeneficiairesDetail(f);
-    const d = calcDecompte(benef, f.typePrincipal || "adulte");
-    return s + d.total * Number(f.dureeGarantie || 1);
+    // Utilise la prime déjà stockée sur la famille (source de vérité)
+    return s + (Number(f.prime) || 0);
   }, 0);
 
   if (loading) return (
@@ -408,11 +440,32 @@ export default function MaladieFamillePage() {
           />
         </div>
 
+        {/* ── Bannière demandes en attente ── */}
+        {pendingFamilles.length > 0 && (
+          <div
+            ref={pendingRef}
+            className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-amber-300 bg-amber-50"
+          >
+            <div className="flex items-center gap-2 text-amber-800 text-sm font-medium">
+              <Clock className="w-4 h-4 shrink-0" />
+              {pendingFamilles.length} demande{pendingFamilles.length > 1 ? "s" : ""} en attente de validation
+              <span className="text-xs font-normal text-amber-700">— affichée{pendingFamilles.length > 1 ? "s" : ""} en haut de la liste</span>
+            </div>
+          </div>
+        )}
+
         {/* ── Liste familles ── */}
         <div className="grid gap-4">
           {filtered.map((famille, i) => {
             const benef    = getBeneficiairesDetail(famille);
-            const decompte    = calcDecompte(benef, famille.typePrincipal || "adulte");
+            // Utilise les tarifs enregistrés sur la famille pour que le décompte soit cohérent
+            const familleTarifs = {
+              ...tarifs,
+              primeEnfant:    Number(famille.tarifPrimeEnfant)    || tarifs.primeEnfant    || TARIF_DEFAULTS.primeEnfant,
+              primeAdulte:    Number(famille.tarifPrimeAdulte)    || tarifs.primeAdulte    || TARIF_DEFAULTS.primeAdulte,
+              primeAdulteAge: Number(famille.tarifPrimeAdulteAge) || tarifs.primeAdulteAge || TARIF_DEFAULTS.primeAdulteAge,
+            };
+            const decompte    = calcDecompte(benef, famille.typePrincipal || "adulte", familleTarifs);
             const duree       = Number(famille.dureeGarantie || 1);
             const cpDisplay   = Number(famille.cp) || decompte.cp;
             const taxesDisplay = Math.round((decompte.primeNette + cpDisplay) * decompte.tauxTaxe / 100);
@@ -564,7 +617,7 @@ export default function MaladieFamillePage() {
                             <span>Mouvement</span>
                           </Button>
                           <Button
-                            onClick={() => navigate(`/maladie-famille/new?id=${famille.id}`)}
+                            onClick={() => navigate(`/admin/maladie-famille/new?id=${famille.id}`)}
                             variant="outline" size="sm" className="text-xs h-8"
                           >
                             <Pencil className="w-3.5 h-3.5 mr-1" />
@@ -586,35 +639,80 @@ export default function MaladieFamillePage() {
                           className="text-xs text-blue-600 flex items-center gap-1 mb-3 hover:underline"
                         >
                           {isOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                          {isOpen ? "Masquer" : "Voir"} le décompte de la prime
+                          {isOpen ? "Masquer" : "Voir"} le décompte & tableau de garantie
                         </button>
 
-                        {/* Décompte détaillé */}
+                        {/* Décompte détaillé + Tableau de garantie (police) */}
                         {isOpen && (
                           <motion.div
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: "auto" }}
-                            className="rounded-lg border overflow-hidden mb-4 text-sm"
+                            className="space-y-4 mb-4"
                           >
-                            {[
-                              { label: `Enfants (${decompte.nb.enfant})`,     val: decompte.primeEnfants    * duree, show: decompte.nb.enfant > 0 },
-                              { label: `Adultes (${decompte.nb.adulte})`,     val: decompte.primeAdultes    * duree, show: decompte.nb.adulte > 0 },
-                              { label: `Personnes âgées (${decompte.nb.adulte_age})`, val: decompte.primeAdultesAge * duree, show: decompte.nb.adulte_age > 0 },
-                              { label: "Prime Nette (Population)",          val: decompte.primeNette      * duree, show: true, bold: true },
-                              { label: "Coût de police", val: cpDisplay * duree, show: true },
-                              { label: "Taxes (10 %)", val: taxesDisplay * duree, show: true },
-                            ].filter(r => r.show).map((row, idx) => (
-                              <div key={idx} className={`flex justify-between px-4 py-2.5 border-t ${row.bold ? "bg-blue-50 font-semibold" : ""}`}>
-                                <span>{row.label}</span>
-                                <span className={`font-mono ${row.bold ? "text-blue-700" : ""}`}>
-                                  {row.val.toLocaleString("fr-FR")} FCFA
-                                </span>
+                            {/* Décompte prime */}
+                            <div className="rounded-lg border overflow-hidden text-sm">
+                              {[
+                                { label: `Enfants (${decompte.nb.enfant})`,     val: decompte.primeEnfants    * duree, show: decompte.nb.enfant > 0 },
+                                { label: `Adultes (${decompte.nb.adulte})`,     val: decompte.primeAdultes    * duree, show: decompte.nb.adulte > 0 },
+                                { label: `Personnes âgées (${decompte.nb.adulte_age})`, val: decompte.primeAdultesAge * duree, show: decompte.nb.adulte_age > 0 },
+                                { label: "Prime Nette (Population)",          val: decompte.primeNette      * duree, show: true, bold: true },
+                                { label: "Coût de police", val: cpDisplay * duree, show: true },
+                                { label: "Taxes (10 %)", val: taxesDisplay * duree, show: true },
+                              ].filter(r => r.show).map((row, idx) => (
+                                <div key={idx} className={`flex justify-between px-4 py-2.5 border-t ${row.bold ? "bg-blue-50 font-semibold" : ""}`}>
+                                  <span>{row.label}</span>
+                                  <span className={`font-mono ${row.bold ? "text-blue-700" : ""}`}>
+                                    {row.val.toLocaleString("fr-FR")} FCFA
+                                  </span>
+                                </div>
+                              ))}
+                              <div className="flex justify-between px-4 py-3 border-t font-bold text-white" style={{ background: "#1B5299" }}>
+                                <span>TOTAL À PAYER</span>
+                                <span className="font-mono">{(Number(famille.prime) > 0 ? Number(famille.prime) * duree : decompte.total * duree).toLocaleString("fr-FR")} FCFA</span>
                               </div>
-                            ))}
-                            <div className="flex justify-between px-4 py-3 border-t font-bold text-white" style={{ background: "#1B5299" }}>
-                              <span>TOTAL À PAYER</span>
-                              <span className="font-mono">{(Number(famille.prime) > 0 ? Number(famille.prime) * duree : decompte.total * duree).toLocaleString("fr-FR")} FCFA</span>
                             </div>
+
+                            {/* Tableau de garantie (police) — affiché si issu d'une proposition */}
+                            {famille.propositionRef && (
+                              <div className="rounded-lg border overflow-hidden">
+                                <div className="px-4 py-3 flex items-center gap-2" style={{ background: "#1B5299" }}>
+                                  <ShieldCheck className="w-4 h-4 text-white shrink-0" />
+                                  <p className="font-bold text-white text-sm">Tableau de garantie — Police {famille.propositionRef}</p>
+                                  {famille.typeGarantie && (
+                                    <span className="ml-auto text-xs bg-white/20 text-white px-2 py-0.5 rounded-full">
+                                      {famille.typeGarantie}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="p-4 grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm bg-gray-50">
+                                  {[
+                                    { label: "Souscripteur",        value: famille.principal },
+                                    { label: "Téléphone",           value: famille.telephone || "—" },
+                                    { label: "Adresse",             value: famille.adresse || "—" },
+                                    { label: "Formule",             value: famille.typeGarantie || "Standard" },
+                                    { label: "Taux remboursement",  value: `${famille.tauxRemboursement ?? 80} %` },
+                                    { label: "Durée",               value: `${duree} an${duree > 1 ? "s" : ""}` },
+                                    { label: "Date début",          value: famille.dateDebut ? new Date(famille.dateDebut).toLocaleDateString("fr-FR") : "—" },
+                                    { label: "Échéance",            value: echeance },
+                                    { label: "Adultes",             value: famille.nbAdultes ?? decompte.nb.adulte },
+                                    { label: "Enfants",             value: famille.nbEnfants ?? decompte.nb.enfant },
+                                    { label: "Personnes âgées",     value: famille.nbPersonnesAgees ?? decompte.nb.adulte_age },
+                                    { label: "Prime totale",        value: `${(Number(famille.prime) > 0 ? Number(famille.prime) * duree : decompte.total * duree).toLocaleString("fr-FR")} FCFA` },
+                                  ].map(({ label, value }) => (
+                                    <div key={label} className="bg-white rounded-lg border p-3">
+                                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{label}</p>
+                                      <p className="font-semibold text-sm">{value}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                                {famille.observations && (
+                                  <div className="px-4 py-3 border-t text-xs text-muted-foreground bg-white">
+                                    <span className="font-semibold text-gray-700">Observations : </span>
+                                    {famille.observations}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </motion.div>
                         )}
 

@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
+import Breadcrumb from "@/components/admin/Breadcrumb";
 
 import { ArrowLeft, Users, Building2 } from "@/components/ui/Icons";
 import { Button } from "@/components/ui/button";
 import PropositionFamilleForm from "./nouvelle-proposition/PropositionFamilleForm";
 import PropositionGroupeForm  from "./nouvelle-proposition/PropositionGroupeForm";
 import QuestionnaireStep      from "./nouvelle-famille/QuestionnaireStep";
-import type { TypeProposition } from "./nouvelle-proposition/types";
+import type { MembreFamille } from "./nouvelle-proposition/types";
 
 type Step = "type" | "questionnaire" | "form";
 
@@ -71,6 +72,7 @@ export default function NewPropositionPage() {
   const [type,                setType]                = useState<TypeProposition | null>(null);
   const [step,                setStep]                = useState<Step>("type");
   const [questionnaireAnswers, setQuestionnaireAnswers] = useState<Record<string, string>>({});
+  const [membresFamille, setMembresFamille] = useState<MembreFamille[]>([]);
 
   const handleSelectType = (t: TypeProposition) => {
     setType(t);
@@ -106,6 +108,11 @@ export default function NewPropositionPage() {
       </div>
     }>
       <div className="max-w-5xl mx-auto pb-10">
+        <Breadcrumb items={[
+          { label: "Tableau de bord", path: "/dashboard" },
+          { label: "Propositions", path: "/admin/propositions" },
+          { label: "Nouvelle proposition" },
+        ]} />
 
         {step === "type" && (
           <TypeSelector onSelect={handleSelectType} />
@@ -115,7 +122,11 @@ export default function NewPropositionPage() {
           <QuestionnaireStep
             embedded
             answers={questionnaireAnswers}
-            onChange={setQuestionnaireAnswers}
+            membresFamille={membresFamille}
+            onChange={(answers, membres) => {
+              setQuestionnaireAnswers(answers);
+              setMembresFamille(membres);
+            }}
             onBack={() => { setType(null); setStep("type"); }}
             onContinue={() => setStep("form")}
           />
@@ -123,6 +134,7 @@ export default function NewPropositionPage() {
 
         {step === "form" && type === "FAMILLE" && (
           <PropositionFamilleForm
+            membresFamille={membresFamille}
             onBack={() => setStep("questionnaire")}
             onSaved={handleSaved}
           />

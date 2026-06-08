@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowLeft, Plus, X, RefreshCw, ChevronDown, ChevronUp, User, Users, Globe } from "@/components/ui/Icons";
 import { toast } from "sonner";
 import { DataService } from "@/services/dataService";
-import { getTarifs, type TarifSettings } from "@/services/tarifService";
+import { getTarifs, TARIF_DEFAULTS, type TarifSettings } from "@/services/tarifService";
 import { notificationStore } from "@/services/notificationStore";
 import { LogoUpload } from "@/components/PhotoUpload";
 import {
@@ -78,8 +78,29 @@ export default function FamilleFormStep({ questAnswers, onBack }: Props) {
           dureeGarantie: famille.dureeGarantie || "1",
           echeanceAuto:  famille.echeanceAuto  ?? true,
         });
+        // beneficiairesDetail peut arriver comme tableau ou comme string JSON sérialisée
+        const isValidBenef = (b: any) =>
+          b !== null && typeof b === "object" && !Array.isArray(b)
+          && typeof b.nom === "string" && b.nom.trim() !== "";
+
+        let detailArr: any[] = [];
+        const rawDetail = famille.beneficiairesDetail;
+        if (Array.isArray(rawDetail)) {
+          detailArr = rawDetail.filter(isValidBenef);
+        } else if (typeof rawDetail === "string") {
+          try {
+            const p = JSON.parse(rawDetail);
+            detailArr = Array.isArray(p) ? p.filter(isValidBenef) : [];
+          } catch { detailArr = []; }
+        }
+        // Repli sur le champ beneficiaires (strings "Nom (Lien)") si aucun objet valide
+        if (detailArr.length === 0 && Array.isArray(famille.beneficiaires)) {
+          detailArr = famille.beneficiaires.filter(
+            (b: any) => typeof b === "string" && b.trim() !== "" && !b.startsWith("undefined")
+          );
+        }
         setBeneficiaires(
-          (famille.beneficiairesDetail || famille.beneficiaires || []).map((b: any) =>
+          detailArr.map((b: any) =>
             typeof b === "string"
               ? { nom: b.replace(/ \(.+\)$/, ""), lien: (b.match(/\((.+)\)$/) || [])[1] || "", type: "adulte" as TypeAssure, dateNaissance: "", lieuNaissance: "", email: "", telephone: "" }
               : { dateNaissance: "", lieuNaissance: "", email: "", telephone: "", ...b }
@@ -200,16 +221,13 @@ export default function FamilleFormStep({ questAnswers, onBack }: Props) {
     }>
       <div className="max-w-3xl mx-auto space-y-6 pb-10">
 
-        {/* Bannière étape 2 */}
+        {/* Titre */}
         {!editingId && (
           <div
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium"
             style={{ background: "#1B529918", border: "1px solid #1B529940", color: "#1B5299" }}
           >
-            <span className="font-bold">Étape 2/2</span> — Informations de souscription
-            <button onClick={onBack} className="ml-auto text-xs underline opacity-70">
-              ← Revoir le questionnaire
-            </button>
+            Nouvelle souscription — Maladie Famille
           </div>
         )}
 

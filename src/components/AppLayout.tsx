@@ -2,6 +2,7 @@ import { ReactNode, useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import AppSidebar from "./AppSidebar";
 import { UserMenu } from "./UserMenu";
+import { UrgenceWidget } from "./UrgenceWidget";
 import { Search, User, Stethoscope, LogOut, Clock } from "@/components/ui/Icons";
 import { NotificationSystem } from "@/components/NotificationSystem";
 import { Input } from "@/components/ui/input";
@@ -32,7 +33,7 @@ let _cachedPrestataires: any[] | null = null;
 
 export default function AppLayout({ children, title, subHeader }: AppLayoutProps) {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const [searchOpen,  setSearchOpen]  = useState(false);
@@ -176,10 +177,10 @@ export default function AppLayout({ children, title, subHeader }: AppLayoutProps
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
 
         {/* ── Top bar ────────────────────────────────────────────────────── */}
-        <header className="h-10 sm:h-11 border-b border-border/40 bg-background/60 backdrop-blur-md flex items-center shrink-0 px-3 sm:px-5 gap-2 sm:gap-3">
+        <header className="relative z-30 h-12 sm:h-14 border-b border-border/40 bg-background/60 backdrop-blur-md flex items-center shrink-0 px-3 sm:px-5 gap-2 sm:gap-3">
 
           {/* Spacer for mobile menu button */}
-          <div className="w-9 h-9 md:hidden flex-shrink-0" />
+          <div className="w-10 h-10 md:hidden flex-shrink-0" />
 
           {/* Title */}
           <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -283,6 +284,9 @@ export default function AppLayout({ children, title, subHeader }: AppLayoutProps
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ── Widget urgences (CLIENT uniquement) ────────────────────────── */}
+      {user?.role === 'client' && <UrgenceWidget />}
 
       {/* ── Alerte inactivité ──────────────────────────────────────────── */}
       {showIdleWarning && (

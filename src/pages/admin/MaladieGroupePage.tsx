@@ -17,7 +17,7 @@ import {
   typeFromDate, TYPE_COLORS,
 } from "./NewFamillePage";
 import { CHAPITRES } from "../ConditionsGeneralesPage";
-import { getTarifs } from "@/services/tarifService";
+import { useTarifs } from "@/hooks/useTarifs";
 import { calcDecomptePopulation, type MembrePopulation } from "./NewGroupePage";
 
 // Parse employesDetail : le backend retourne une chaîne JSON, pas un tableau
@@ -107,7 +107,7 @@ export default function MaladieGroupePage() {
   const [openChap,    setOpenChap]        = useState<string | null>(null);
   const [expandedGroupe, setExpandedGroupe]     = useState<number | null>(null);
   const [mouvementGroupe, setMouvementGroupe]   = useState<any | null>(null);
-  const tarifs = getTarifs();
+  const tarifs = useTarifs();
 
   useEffect(() => {
     DataService.getGroupes()
@@ -175,9 +175,9 @@ export default function MaladieGroupePage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
           {[
             { icon: <Building2 className="w-5 h-5 sm:w-6 sm:h-6 text-white" />, bg: "from-blue-500 to-blue-600",    label: "Entreprises", value: groupes.length },
-            { icon: <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-white" />, bg: "from-green-500 to-green-600", label: "Actifs",      value: groupes.filter(g => g.statut === "Actif").length },
-            { icon: <Users className="w-5 h-5 sm:w-6 sm:h-6 text-white" />,      bg: "from-purple-500 to-purple-600", label: "Assurés",   value: totalAssures },
-            { icon: <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 text-white" />, bg: "from-indigo-500 to-indigo-600", label: "Primes",   value: totalPrime >= 1_000_000 ? `${(totalPrime/1_000_000).toFixed(1)}M F` : totalPrime >= 1000 ? `${(totalPrime/1000).toFixed(0)}k F` : `${totalPrime} F` },
+            { icon: <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-white" />, bg: "from-blue-400 to-blue-500", label: "Actifs",      value: groupes.filter(g => g.statut === "Actif").length },
+            { icon: <Users className="w-5 h-5 sm:w-6 sm:h-6 text-white" />,      bg: "from-blue-600 to-blue-700", label: "Assurés",   value: totalAssures },
+            { icon: <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 text-white" />, bg: "from-blue-500 to-blue-600", label: "Primes",   value: totalPrime >= 1_000_000 ? `${(totalPrime/1_000_000).toFixed(1)}M F` : totalPrime >= 1000 ? `${(totalPrime/1000).toFixed(0)}k F` : `${totalPrime} F` },
           ].map((s, i) => (
             <Card key={i} className="p-2.5 sm:p-4">
               <div className="flex items-center gap-2 sm:gap-3">
@@ -346,9 +346,9 @@ export default function MaladieGroupePage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                   {[
                     { label: "Total assurés",      value: nbTotal,    color: "text-blue-700",   bg: "bg-blue-50 border-blue-200",    icon: <Users className="w-4 h-4 text-blue-600" /> },
-                    { label: "Adultes",             value: nbAdultes,  color: "text-indigo-700", bg: "bg-indigo-50 border-indigo-200", icon: <Users className="w-4 h-4 text-indigo-600" /> },
-                    { label: "Enfants",             value: nbEnfants,  color: "text-green-700",  bg: "bg-green-50 border-green-200",   icon: <Users className="w-4 h-4 text-green-600" /> },
-                    { label: "Personnes âgées",     value: nbAges,     color: "text-purple-700", bg: "bg-purple-50 border-purple-200", icon: <Users className="w-4 h-4 text-purple-600" /> },
+                    { label: "Adultes",             value: nbAdultes,  color: "text-blue-600", bg: "bg-blue-100 border-blue-300", icon: <Users className="w-4 h-4 text-blue-700" /> },
+                    { label: "Enfants",             value: nbEnfants,  color: "text-blue-500",  bg: "bg-blue-50 border-blue-200",   icon: <Users className="w-4 h-4 text-blue-600" /> },
+                    { label: "Personnes âgées",     value: nbAges,     color: "text-blue-800", bg: "bg-blue-100 border-blue-300", icon: <Users className="w-4 h-4 text-blue-700" /> },
                   ].map(c => (
                     <div key={c.label} className={`rounded-xl border p-3 flex items-center gap-3 ${c.bg}`}>
                       {c.icon}
@@ -363,8 +363,8 @@ export default function MaladieGroupePage() {
                   <div className="space-y-2">
                     {[
                       { label: "Adultes",         nb: nbAdultes, color: "#1B5299", pct: Math.round(nbAdultes / nbTotal * 100) },
-                      { label: "Enfants",         nb: nbEnfants, color: "#16a34a", pct: Math.round(nbEnfants / nbTotal * 100) },
-                      { label: "Personnes âgées", nb: nbAges,    color: "#7c3aed", pct: Math.round(nbAges    / nbTotal * 100) },
+                      { label: "Enfants",         nb: nbEnfants, color: "#3B82F6", pct: Math.round(nbEnfants / nbTotal * 100) },
+                      { label: "Personnes âgées", nb: nbAges,    color: "#60A5FA", pct: Math.round(nbAges    / nbTotal * 100) },
                     ].map(bar => (
                       <div key={bar.label} className="flex items-center gap-3">
                         <span className="text-xs text-muted-foreground w-28 shrink-0">{bar.label} ({bar.nb})</span>
@@ -436,7 +436,7 @@ export default function MaladieGroupePage() {
                             className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl object-contain border border-gray-200 bg-white p-1"
                           />
                         ) : (
-                          <div className="p-2 sm:p-3 bg-gradient-to-br from-blue-100 to-purple-100 rounded-xl">
+                          <div className="p-2 sm:p-3 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl">
                             <Building2 className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
                           </div>
                         )}
@@ -466,17 +466,17 @@ export default function MaladieGroupePage() {
                             {membres.length} assuré{membres.length > 1 ? "s" : ""}
                           </div>
                           {decompte.nb.enfant > 0 && (
-                            <div className="flex items-center gap-1.5 text-xs bg-green-50 border border-green-200 text-green-700 px-2 py-1 rounded">
+                            <div className="flex items-center gap-1.5 text-xs bg-blue-50 border border-blue-200 text-blue-700 px-2 py-1 rounded">
                               {decompte.nb.enfant} enfant{decompte.nb.enfant > 1 ? "s" : ""}
                             </div>
                           )}
                           {decompte.nb.adulte > 0 && (
-                            <div className="flex items-center gap-1.5 text-xs bg-blue-50 border border-blue-200 text-blue-700 px-2 py-1 rounded">
+                            <div className="flex items-center gap-1.5 text-xs bg-blue-100 border border-blue-300 text-blue-800 px-2 py-1 rounded">
                               {decompte.nb.adulte} adulte{decompte.nb.adulte > 1 ? "s" : ""}
                             </div>
                           )}
                           {decompte.nb.adulte_age > 0 && (
-                            <div className="flex items-center gap-1.5 text-xs bg-purple-50 border border-purple-200 text-purple-700 px-2 py-1 rounded">
+                            <div className="flex items-center gap-1.5 text-xs bg-blue-50 border border-blue-200 text-blue-600 px-2 py-1 rounded">
                               {decompte.nb.adulte_age} âgé{decompte.nb.adulte_age > 1 ? "s" : ""}
                             </div>
                           )}
@@ -540,7 +540,7 @@ export default function MaladieGroupePage() {
                           className="text-xs text-blue-600 flex items-center gap-1 mb-3 hover:underline"
                         >
                           {isOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                          {isOpen ? "Masquer" : "Voir"} le décompte & les employés
+                          {isOpen ? "Masquer" : "Voir"} le décompte, tableau de garantie & employés
                         </button>
 
                         {/* Section dépliée */}
@@ -572,6 +572,48 @@ export default function MaladieGroupePage() {
                                 <span className="font-mono">{(Number(groupe.prime) > 0 ? Number(groupe.prime) * duree : decompte.total * duree).toLocaleString("fr-FR")} FCFA</span>
                               </div>
                             </div>
+
+                            {/* Tableau de garantie (police) — affiché si issu d'une proposition */}
+                            {groupe.propositionRef && (
+                              <div className="rounded-lg border overflow-hidden">
+                                <div className="px-4 py-3 flex items-center gap-2" style={{ background: "#1B5299" }}>
+                                  <ShieldCheck className="w-4 h-4 text-white shrink-0" />
+                                  <p className="font-bold text-white text-sm">Tableau de garantie — Police {groupe.propositionRef}</p>
+                                  {groupe.typeGarantie && (
+                                    <span className="ml-auto text-xs bg-white/20 text-white px-2 py-0.5 rounded-full">
+                                      {groupe.typeGarantie}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="p-4 grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm bg-gray-50">
+                                  {[
+                                    { label: "Entreprise",          value: groupe.entreprise },
+                                    { label: "Secteur",             value: groupe.secteur || "—" },
+                                    { label: "Contact",             value: groupe.contactNom || "—" },
+                                    { label: "Formule",             value: groupe.typeGarantie || "Standard" },
+                                    { label: "Taux remboursement",  value: `${groupe.tauxRemboursement ?? 80} %` },
+                                    { label: "Durée",               value: `${duree} an${duree > 1 ? "s" : ""}` },
+                                    { label: "Date début",          value: groupe.debut ? new Date(groupe.debut).toLocaleDateString("fr-FR") : "—" },
+                                    { label: "Échéance",            value: echeance },
+                                    { label: "Adultes",             value: groupe.nbAdultes ?? decompte.nb.adulte },
+                                    { label: "Enfants",             value: groupe.nbEnfants ?? decompte.nb.enfant },
+                                    { label: "Personnes âgées",     value: groupe.nbPersonnesAgees ?? decompte.nb.adulte_age },
+                                    { label: "Prime totale",        value: `${(Number(groupe.prime) > 0 ? Number(groupe.prime) * duree : decompte.total * duree).toLocaleString("fr-FR")} FCFA` },
+                                  ].map(({ label, value }) => (
+                                    <div key={label} className="bg-white rounded-lg border p-3">
+                                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">{label}</p>
+                                      <p className="font-semibold text-sm">{value}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                                {groupe.observations && (
+                                  <div className="px-4 py-3 border-t text-xs text-muted-foreground bg-white">
+                                    <span className="font-semibold text-gray-700">Observations : </span>
+                                    {groupe.observations}
+                                  </div>
+                                )}
+                              </div>
+                            )}
 
                             {/* Liste des membres */}
                             <div>

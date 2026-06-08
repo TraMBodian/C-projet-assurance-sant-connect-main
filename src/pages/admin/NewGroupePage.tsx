@@ -27,9 +27,10 @@ import {
   type TypeAssure, typeFromDate,
   TYPE_COLORS,
 } from "./NewFamillePage";
-import { getTarifs, type TarifSettings } from "@/services/tarifService";
+import { getTarifs, TARIF_DEFAULTS, type TarifSettings } from "@/services/tarifService";
 import { LogoUpload } from "@/components/PhotoUpload";
 import OffreStep, { type OffrePopulation, type TarifsGroupe, OFFRE_VIDE } from "./nouveau-groupe/OffreStep";
+import Breadcrumb from "@/components/admin/Breadcrumb";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -66,7 +67,7 @@ export interface FamilleGroup {
 // ─── Calcul décompte ──────────────────────────────────────────────────────────
 
 export function calcDecomptePopulation(membres: MembrePopulation[], tarifs?: TarifSettings) {
-  const t = tarifs ?? getTarifs();
+  const t = tarifs ?? TARIF_DEFAULTS;
   const nb: Record<TypeAssure, number> = { enfant: 0, adulte: 0, adulte_age: 0 };
   for (const m of membres) nb[m.type]++;
   const primeEnfants    = nb.enfant     * t.primeEnfant;
@@ -637,7 +638,7 @@ export default function NewGroupePage() {
   const [parseResult,  setParseResult]  = useState<ParseResult | null>(null);
   const [membres,      setMembres]      = useState<MembrePopulation[]>([]);
   const [tarifs, setTarifs] = useState<TarifSettings>(() => ({
-    ...getTarifs(),
+    ...TARIF_DEFAULTS,
     primeEnfant: 0,
     primeAdulte: 0,
     primeAdulteAge: 0,
@@ -1174,6 +1175,11 @@ export default function NewGroupePage() {
       </AlertDialog>
 
       <div className="max-w-5xl mx-auto space-y-5 pb-10">
+        <Breadcrumb items={[
+          { label: "Tableau de bord", path: "/dashboard" },
+          { label: "Maladie Groupe", path: "/admin/maladie-groupe" },
+          { label: "Nouveau groupe" },
+        ]} />
 
         {/* ══════════════ ÉTAPE 2 — FORMULAIRE ══════════════ */}
         {step === "formulaire" && (

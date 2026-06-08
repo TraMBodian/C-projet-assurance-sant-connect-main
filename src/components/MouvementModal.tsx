@@ -4,7 +4,7 @@ import { X, UserPlus, UserMinus, Calculator, Check, Plus, Trash2 } from "@/compo
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { getTarifs } from "@/services/tarifService";
+import { TARIF_DEFAULTS } from "@/services/tarifService";
 import { typeFromDate, TYPE_LABELS, TYPE_COLORS, type TypeAssure } from "@/pages/admin/NewFamillePage";
 import { DataService } from "@/services/dataService";
 import { toast } from "sonner";
@@ -87,11 +87,11 @@ export function MouvementModal({ contrat, contratType, onClose, onSaved }: Mouve
   const [saving,           setSaving]           = useState(false);
   const [done,             setDone]             = useState(false);
 
-  // Tarifs stockés sur le contrat ou tarifs courants
+  // Tarifs : priorité aux tarifs stockés sur le contrat, puis valeurs par défaut
   const tarifs = {
-    primeEnfant:    Number(contrat.tarifPrimeEnfant)    || getTarifs().primeEnfant,
-    primeAdulte:    Number(contrat.tarifPrimeAdulte)    || getTarifs().primeAdulte,
-    primeAdulteAge: Number(contrat.tarifPrimeAdulteAge) || getTarifs().primeAdulteAge,
+    primeEnfant:    Number(contrat.tarifPrimeEnfant)    || TARIF_DEFAULTS.primeEnfant,
+    primeAdulte:    Number(contrat.tarifPrimeAdulte)    || TARIF_DEFAULTS.primeAdulte,
+    primeAdulteAge: Number(contrat.tarifPrimeAdulteAge) || TARIF_DEFAULTS.primeAdulteAge,
   };
 
   const echeance    = getEcheanceDate(contrat);
@@ -101,7 +101,16 @@ export function MouvementModal({ contrat, contratType, onClose, onSaved }: Mouve
   // Bénéficiaires actuels (pour retrait)
   const benefs: PersonneMouvement[] = useMemo(() => {
     if (contratType === "famille") {
-      const detail = contrat.beneficiairesDetail || [];
+      let detail: any[] = [];
+      const rawDetail = contrat.beneficiairesDetail;
+      if (Array.isArray(rawDetail)) {
+        detail = rawDetail.filter((b: any) => b !== null && typeof b === "object" && !Array.isArray(b) && typeof b.nom === "string" && b.nom.trim() !== "");
+      } else if (typeof rawDetail === "string") {
+        try {
+          const p = JSON.parse(rawDetail);
+          detail = Array.isArray(p) ? p.filter((b: any) => b !== null && typeof b === "object" && typeof b.nom === "string" && b.nom.trim() !== "") : [];
+        } catch { detail = []; }
+      }
       const principal: PersonneMouvement = {
         nom:           contrat.principal || "Principal",
         lien:          "Souscripteur",
@@ -201,7 +210,20 @@ export function MouvementModal({ contrat, contratType, onClose, onSaved }: Mouve
 
       // Mise à jour du contrat (bénéficiaires)
       if (contratType === "famille") {
-        const currentDetail: any[] = contrat.beneficiairesDetail || [];
+        // Parse JSON si beneficiairesDetail arrive comme string sérialisée
+        let currentDetail: any[] = [];
+        const rawBenef = contrat.beneficiairesDetail;
+        if (Array.isArray(rawBenef)) {
+          // Filtre les entrées corrompues (caractères, nombres…) — ne garde que les vrais objets
+          currentDetail = rawBenef.filter((b: any) => b !== null && typeof b === "object" && !Array.isArray(b) && typeof b.nom === "string" && b.nom.trim() !== "");
+        } else if (typeof rawBenef === "string") {
+          try {
+            const parsed = JSON.parse(rawBenef);
+            currentDetail = Array.isArray(parsed)
+              ? parsed.filter((b: any) => b !== null && typeof b === "object" && typeof b.nom === "string" && b.nom.trim() !== "")
+              : [];
+          } catch { currentDetail = []; }
+        }
         let newDetail: any[];
         if (typeMov === "incorporation") {
           newDetail = [...currentDetail, ...personnesMov];

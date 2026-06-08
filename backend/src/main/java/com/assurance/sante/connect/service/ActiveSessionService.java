@@ -65,4 +65,16 @@ public class ActiveSessionService {
             }
         });
     }
+
+    /** Supprime définitivement les sessions fantômes inactives depuis plus de 24h */
+    @Scheduled(cron = "0 0 2 * * ?")  // Tous les jours à 2h du matin
+    public void purgeOldSessions() {
+        LocalDateTime cutoff = LocalDateTime.now().minusHours(24);
+        List<ActiveSession> old = repo.findAll().stream()
+            .filter(s -> !s.isActive() && s.getLastActivity() != null && s.getLastActivity().isBefore(cutoff))
+            .toList();
+        if (!old.isEmpty()) {
+            repo.deleteAll(old);
+        }
+    }
 }

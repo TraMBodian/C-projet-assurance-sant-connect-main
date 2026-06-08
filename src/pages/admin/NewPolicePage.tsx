@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Search, X, User } from "@/components/ui/Icons";
+import Breadcrumb from "@/components/admin/Breadcrumb";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -91,7 +92,13 @@ export default function NewPolicePage() {
         <ArrowLeft className="w-4 h-4 mr-2" /> Retour
       </Button>
     }>
-      <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
+      <div className="flex flex-col min-h-[calc(100vh-200px)]">
+        <Breadcrumb items={[
+          { label: "Tableau de bord", path: "/dashboard" },
+          { label: "Polices", path: "/polices" },
+          { label: "Nouvelle police" },
+        ]} />
+        <div className="flex items-center justify-center flex-1">
         <div className="w-full max-w-2xl space-y-6">
 
           <Card className="p-6">
@@ -212,6 +219,7 @@ export default function NewPolicePage() {
               </Button>
             </form>
           </Card>
+        </div>
         </div>
       </div>
     </AppLayout>

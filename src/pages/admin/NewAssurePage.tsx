@@ -1,11 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "@/components/ui/Icons";
+import Breadcrumb from "@/components/admin/Breadcrumb";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { DataService } from "@/services/dataService";
 
@@ -27,7 +28,21 @@ export default function NewAssurePage() {
     garantie: "Standard",
     type: "FAMILLE",
     statut: "ACTIF",
+    assurePrincipalId: "",
   });
+  const [principaux, setPrincipaux] = useState<{ id: string; label: string }[]>([]);
+
+  useEffect(() => {
+    DataService.getAssures()
+      .then(list =>
+        setPrincipaux(
+          list
+            .filter((a: any) => (a.lien || "").toLowerCase() === "principal")
+            .map((a: any) => ({ id: String(a.id), label: `${a.prenom} ${a.nom} — ${a.numero}` }))
+        )
+      )
+      .catch(() => {});
+  }, []);
 
   const set = (field: string, value: string) =>
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -81,6 +96,11 @@ export default function NewAssurePage() {
       </Button>
     }>
       <div className="w-full px-2 sm:px-0">
+        <Breadcrumb items={[
+          { label: "Tableau de bord", path: "/dashboard" },
+          { label: "Assurés", path: "/admin/assures" },
+          { label: "Nouvel assuré" },
+        ]} />
         <div className="flex justify-center">
           <div className="w-full max-w-3xl space-y-4 sm:space-y-6">
 
@@ -140,6 +160,24 @@ export default function NewAssurePage() {
                   ]))}
                   {field("dateAdhesion", "Date d'adhésion", inp("dateAdhesion", "", "date"))}
                 </div>
+
+                {formData.lien !== "Principal" && (
+                  <div>
+                    <Label className="text-xs sm:text-sm font-medium">Assuré principal (rattachement)</Label>
+                    <div className="mt-1 sm:mt-2">
+                      <select
+                        value={formData.assurePrincipalId}
+                        onChange={e => setFormData(prev => ({ ...prev, assurePrincipalId: e.target.value }))}
+                        className="w-full px-3 sm:px-4 py-2 text-xs sm:text-sm h-9 sm:h-10 rounded-lg border border-input bg-card focus:outline-none focus:ring-2 focus:ring-ring"
+                      >
+                        <option value="">— Sélectionner un principal —</option>
+                        {principaux.map(p => (
+                          <option key={p.id} value={p.id}>{p.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                   {field("salaire", "Salaire (FCFA)", inp("salaire", "500000"))}

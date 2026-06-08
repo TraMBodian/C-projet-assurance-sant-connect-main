@@ -19,6 +19,9 @@ public class Sinistre {
     @Column(unique = true, nullable = false)
     private String numero;
 
+    @Column(name = "sinistre_type", nullable = false)
+    private String type = "CONSULTATION";
+
     @ManyToOne
     @JoinColumn(name = "assure_id", nullable = false)
     private Assure assure;

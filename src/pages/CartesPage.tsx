@@ -480,15 +480,15 @@ export default function CartesPage() {
     <AppLayout title={pageTitle}>
       <div className="flex flex-col items-center justify-center h-64 gap-3 text-center">
         <ServerCrash className="w-10 h-10 text-muted-foreground opacity-40" />
-        <p className="font-semibold">Impossible de joindre le serveur</p>
-        <p className="text-sm text-muted-foreground">Vérifiez que le backend est démarré.</p>
+        <p className="font-semibold">Service temporairement indisponible</p>
+        <p className="text-sm text-muted-foreground">Veuillez réessayer dans quelques instants ou contacter le support.</p>
       </div>
     </AppLayout>
   );
 
   return (
     <AppLayout title={pageTitle}>
-      <div className="space-y-5">
+      <div className="space-y-5 px-4 sm:px-6">
 
         {!isClient && (
           <div className="flex items-center gap-2 max-w-sm">

@@ -2,9 +2,9 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  LayoutDashboard, Users, UserCog, Shield, FileText, CreditCard,
+  LayoutDashboard, Users, Shield, FileText, CreditCard,
   Stethoscope, Pill, ClipboardList, ChevronDown, ChevronRight,
-  Menu, X, LogOut, Banknote, BarChart2, Archive, MessageCircle,
+  Menu, X, LogOut, Banknote, BarChart2, Archive, MessageCircle, RefreshCw, Calendar, User, Heart, ShieldCheck,
 } from "@/components/ui/Icons";
 import { useAuth } from "@/context/AuthContext";
 
@@ -26,7 +26,14 @@ interface NavItem {
 
 const adminNavItems: NavItem[] = [
   { label: "Tableau de bord", icon: <LayoutDashboard size={18} />, path: "/dashboard" },
-  { label: "Statistiques",   icon: <BarChart2 size={18} />,       path: "/admin/statistiques" },
+  {
+    label: "Statistiques & Analyses",
+    icon: <BarChart2 size={18} />,
+    children: [
+      { label: "Statistiques",        path: "/admin/statistiques" },
+      { label: "Tableau de bord financier", path: "/admin/financier" },
+    ],
+  },
   {
     label: "Production",
     icon: <Shield size={18} />,
@@ -37,9 +44,25 @@ const adminNavItems: NavItem[] = [
       { label: "Maladie Groupe",  path: "/admin/maladie-groupe" },
     ],
   },
-  { label: "Assurés",        icon: <Users size={18} />,       path: "/admin/assures" },
-  { label: "Utilisateurs",   icon: <UserCog size={18} />,     path: "/admin/users" },
-  { label: "Prestataires",   icon: <Stethoscope size={18} />, path: "/admin/prestataires" },
+  {
+    label: "Membres",
+    icon: <Users size={18} />,
+    children: [
+      { label: "Assurés",        path: "/admin/assures" },
+      { label: "Utilisateurs",   path: "/admin/users" },
+      { label: "Prestataires",   path: "/admin/prestataires" },
+      { label: "Professionnels", path: "/professionnels-sante" },
+    ],
+  },
+  {
+    label: "Activité médicale",
+    icon: <ClipboardList size={18} />,
+    children: [
+      { label: "Prestations",    path: "/prestations" },
+      { label: "Consultations",  path: "/consultations" },
+      { label: "Prescriptions",  path: "/prescriptions" },
+    ],
+  },
   {
     label: "Sinistres",
     icon: <FileText size={18} />,
@@ -48,36 +71,48 @@ const adminNavItems: NavItem[] = [
       { label: "Remboursements",  path: "/remboursements" },
     ],
   },
-  { label: "Cartes",         icon: <CreditCard size={18} />,   path: "/cartes" },
-  { label: "Consultations",  icon: <ClipboardList size={18} />, path: "/consultations" },
-  { label: "Prescriptions",  icon: <Pill size={18} />,          path: "/prescriptions" },
-  { label: "Archives",       icon: <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>, path: "/admin/archives" },
-  { label: "Messagerie",     icon: <MessageCircle size={18} />,        path: "/chat" },
+  {
+    label: "Gestion financière",
+    icon: <Banknote size={18} />,
+    children: [
+      { label: "Paiements primes",  path: "/paiements-primes" },
+      { label: "Demandes contrat",  path: "/demandes-contrat" },
+      { label: "Avenants contrat",  path: "/avenants-contrat" },
+      { label: "Cartes",            path: "/cartes" },
+    ],
+  },
+  { label: "Messagerie",     icon: <MessageCircle size={18} />, path: "/chat" },
+  { label: "Archives",       icon: <Archive size={18} />,       path: "/admin/archives" },
+  { label: "Journal d'audit", icon: <ShieldCheck size={18} />,  path: "/admin/audit-logs" },
 ];
 
 const prestataireNavItems: NavItem[] = [
-  { label: "Tableau de bord", icon: <LayoutDashboard size={18} />, path: "/dashboard" },
-  { label: "Consultations",   icon: <ClipboardList size={18} />,   path: "/consultations" },
-  { label: "Prescriptions",   icon: <Pill size={18} />,            path: "/prescriptions" },
-  {
-    label: "Sinistres",
-    icon: <FileText size={18} />,
-    children: [
-      { label: "Liste sinistres", path: "/sinistres" },
-      { label: "Remboursements",  path: "/remboursements" },
-    ],
-  },
-  { label: "Messagerie",      icon: <MessageCircle size={18} />,   path: "/chat" },
+  { label: "Tableau de bord",  icon: <LayoutDashboard size={18} />, path: "/dashboard" },
+  { label: "Statistiques",     icon: <BarChart2 size={18} />,       path: "/prestataire-dashboard" },
+  { label: "Agenda",           icon: <Calendar size={18} />,        path: "/agenda" },
+  { label: "Mes Patients",     icon: <Users size={18} />,           path: "/mes-patients" },
+  { label: "Consultations",    icon: <ClipboardList size={18} />,   path: "/consultations" },
+  { label: "Prescriptions",    icon: <Pill size={18} />,            path: "/prescriptions" },
+  { label: "Prestations",      icon: <Pill size={18} />,            path: "/prestations" },
+  { label: "Messagerie",       icon: <MessageCircle size={18} />,   path: "/chat" },
+  { label: "Mon Profil",       icon: <User size={18} />,            path: "/profil-prestataire" },
 ];
 
 const clientNavItems: NavItem[] = [
-  { label: "Tableau de bord", icon: <LayoutDashboard size={18} />, path: "/dashboard" },
-  { label: "Mes Polices",      icon: <Shield size={18} />,          path: "/polices" },
-  { label: "Mes Sinistres",    icon: <FileText size={18} />,        path: "/sinistres" },
-  { label: "Remboursements",   icon: <Banknote size={18} />,        path: "/remboursements" },
-  { label: "Ma Carte",         icon: <CreditCard size={18} />,      path: "/cartes" },
-  { label: "Mes Prescriptions",icon: <Pill size={18} />,            path: "/prescriptions" },
-  { label: "Messagerie",      icon: <MessageCircle size={18} />,   path: "/chat" },
+  { label: "Tableau de bord",          icon: <LayoutDashboard size={18} />, path: "/dashboard" },
+  { label: "Mes Polices",              icon: <Shield size={18} />,          path: "/polices" },
+  { label: "Mes Bénéficiaires",        icon: <Users size={18} />,           path: "/beneficiaires" },
+  { label: "Mes Paiements",            icon: <Banknote size={18} />,        path: "/paiements-primes" },
+  { label: "Mes Demandes",             icon: <RefreshCw size={18} />,       path: "/demandes-contrat" },
+  { label: "Mes Avenants",             icon: <FileText size={18} />,        path: "/avenants-contrat" },
+  { label: "Mes Sinistres",            icon: <FileText size={18} />,        path: "/sinistres" },
+  { label: "Remboursements",           icon: <Banknote size={18} />,        path: "/remboursements" },
+  { label: "Ma Carte",                 icon: <CreditCard size={18} />,      path: "/cartes" },
+  { label: "Mes Prescriptions",        icon: <Pill size={18} />,            path: "/prescriptions" },
+  { label: "Mes Prestations",          icon: <Pill size={18} />,            path: "/prestations" },
+  { label: "Professionnels de santé",  icon: <Stethoscope size={18} />,     path: "/professionnels-sante" },
+  { label: "Mon Dossier Santé",         icon: <Heart size={18} />,           path: "/mon-dossier" },
+  { label: "Messagerie",               icon: <MessageCircle size={18} />,   path: "/chat" },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -97,13 +132,6 @@ export default function AppSidebar() {
   const navItems = user?.role === 'prestataire' ? prestataireNavItems
     : user?.role === 'client'      ? clientNavItems
     : adminNavItems;
-
-  const roleLabel = user?.role === 'admin'       ? 'Administrateur'
-    : user?.role === 'prestataire' ? 'Prestataire'
-    : 'Client';
-
-  const initials = (user?.full_name || user?.fullName || user?.email || 'U')
-    .split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2);
 
   const handleSignOut = async () => {
     await signOut();
@@ -162,7 +190,7 @@ export default function AppSidebar() {
               <button
                 onClick={() => { if (!collapsed || isMobile) toggleMenu(item.label); }}
                 title={collapsed && !isMobile ? item.label : undefined}
-                className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`w-full flex items-center gap-3 px-3 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors ${
                   isChildActive(item.children)
                     ? "text-white bg-brand"
                     : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
@@ -195,7 +223,7 @@ export default function AppSidebar() {
                           key={child.path}
                           to={child.path}
                           onClick={() => setMobileOpen(false)}
-                          className={`block px-3 py-1.5 rounded-md text-sm transition-colors ${
+                          className={`block px-3 py-2 min-h-[40px] flex items-center rounded-md text-sm transition-colors ${
                             isActive(child.path)
                               ? "text-white bg-brand font-medium"
                               : "text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent"
@@ -215,7 +243,7 @@ export default function AppSidebar() {
               to={item.path!}
               onClick={() => setMobileOpen(false)}
               title={collapsed && !isMobile ? item.label : undefined}
-              className={`flex items-center gap-3 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              className={`flex items-center gap-3 px-3 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors ${
                 isActive(item.path)
                   ? "text-white bg-brand"
                   : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
@@ -258,7 +286,7 @@ export default function AppSidebar() {
       {/* Mobile menu button */}
       <button
         onClick={() => setMobileOpen(true)}
-        className="md:hidden fixed top-2.5 left-2.5 sm:top-3 sm:left-3 z-40 p-2 rounded-lg bg-card shadow-sm border border-border hover:bg-muted transition-colors"
+        className="md:hidden fixed top-2 left-2 z-40 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg bg-card shadow-sm border border-border hover:bg-muted transition-colors"
         aria-label="Ouvrir le menu"
       >
         <Menu size={18} />

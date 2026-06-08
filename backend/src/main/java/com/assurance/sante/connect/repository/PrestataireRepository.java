@@ -8,5 +8,7 @@ import java.util.Optional;
 @Repository
 public interface PrestataireRepository extends JpaRepository<Prestataire, Long> {
     Optional<Prestataire> findByNumero(String numero);
+    Optional<Prestataire> findFirstByEmail(String email);
+    Optional<Prestataire> findByUserId(Long userId);
     boolean existsByNumero(String numero);
 }

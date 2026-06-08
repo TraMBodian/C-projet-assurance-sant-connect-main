@@ -1,112 +1,113 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Shield, Users, FileText, Activity, ArrowRight, CheckCircle2, Menu, Phone, Mail, MapPin, Star, TrendingUp, Clock, Award, Stethoscope } from "@/components/ui/Icons";
+import {
+  Shield, Users, FileText, Activity, ArrowRight, CheckCircle2, Menu, X,
+  Phone, Mail, MapPin, Star, TrendingUp, Clock, Award, Stethoscope,
+  ChevronDown, BarChart2,
+} from "@/components/ui/Icons";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
-import { motion, useInView } from "framer-motion";
+import { motion, AnimatePresence, useInView } from "framer-motion";
 import { FeatureSection } from "@/components/FeatureSection";
-// ─── Formulaire avis clients ─────────────────────────────────────────────────
-const LABELS = ['', 'Décevant', 'Passable', 'Bien', 'Très bien', 'Excellent'];
-function FeedbackForm() {
-  const [avis, setAvis]   = useState({ nom: '', email: '', note: 0, message: '' });
-  const [hover, setHover] = useState(0);
-  const [sent, setSent]   = useState(false);
-  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-    setAvis(p => ({ ...p, [k]: e.target.value }));
-  const active = hover || avis.note;
-  return (
-    <section className="py-24 mt-10 mx-4 relative z-[45] rounded-[50px] overflow-hidden bg-blue-600">
-      {/* Cercles décoratifs */}
-      <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2 pointer-events-none" />
 
-      <div className="container mx-auto px-4 max-w-xl relative z-10">
-        <div className="text-center mb-10">
-          <span className="inline-block bg-white/20 text-white text-xs font-semibold px-4 py-1.5 rounded-full mb-4 uppercase tracking-widest">Témoignages</span>
-          <h2 className="text-4xl font-bold text-white mb-3">Partagez votre expérience</h2>
-          <p className="text-white/70 text-lg">Votre retour nous aide à progresser</p>
-        </div>
+// ─── Données statiques marketing ─────────────────────────────────────────────
+// Ces chiffres sont des indicateurs commerciaux, pas les stats live de la DB.
+const MARKETING_STATS = [
+  { icon: TrendingUp,  value: "500+",  label: "Assurés gérés",        suffix: "" },
+  { icon: Stethoscope, value: "120+",  label: "Prestataires réseau",  suffix: "" },
+  { icon: Award,       value: "98",    label: "Taux de satisfaction", suffix: "%" },
+  { icon: Clock,       value: "48",    label: "Délai remboursement",  suffix: "h" },
+];
 
-        {sent ? (
-          <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-12 text-center">
-            <div className="w-20 h-20 bg-green-400/20 rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg className="w-10 h-10 text-green-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
-            </div>
-            <h3 className="text-2xl font-bold text-white mb-2">Merci beaucoup !</h3>
-            <p className="text-white/70 mb-6">Votre avis a bien été reçu.</p>
-            <button onClick={() => { setSent(false); setAvis({ nom:'', email:'', note:0, message:'' }); }}
-              className="text-sm text-white/70 hover:text-white transition-colors underline underline-offset-4">
-              Laisser un autre avis
-            </button>
-          </div>
-        ) : (
-          <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-8 shadow-2xl">
-            <form onSubmit={e => { e.preventDefault(); if (avis.note === 0) return; setSent(true); }} className="space-y-6">
+// ─── Témoignages enrichis ─────────────────────────────────────────────────────
+const TESTIMONIALS = [
+  {
+    name: "Aïssatou Diallo",
+    role: "Directrice des Ressources Humaines",
+    company: "Groupe Teranga SA",
+    text: "Depuis que nous utilisons cette plateforme, la gestion de nos 200 assurés est devenue un jeu d'enfant. Gain de temps énorme et zéro dossier perdu.",
+    rating: 5,
+    initials: "AD",
+    color: "bg-blue-600",
+  },
+  {
+    name: "Mamadou Ndiaye",
+    role: "Gérant",
+    company: "Cabinet Médical Dakar Centre",
+    text: "Interface claire, remboursements traités en moins de 48 h. Nos patients n'attendent plus. Le suivi en temps réel change tout.",
+    rating: 4,
+    initials: "MN",
+    color: "bg-emerald-600",
+  },
+  {
+    name: "Fatoumata Sow",
+    role: "Responsable Santé & Prévoyance",
+    company: "Banque Africaine de Commerce",
+    text: "Le suivi en temps réel des sinistres a transformé notre façon de travailler. L'outil est fiable, rapide et le support toujours disponible.",
+    rating: 5,
+    initials: "FS",
+    color: "bg-purple-600",
+  },
+];
 
-              {/* Étoiles */}
-              <div className="text-center">
-                <p className="text-white/80 text-sm mb-3">Votre note globale</p>
-                <div className="flex justify-center gap-2 mb-1">
-                  {[1,2,3,4,5].map(n => (
-                    <button key={n} type="button"
-                      onMouseEnter={() => setHover(n)} onMouseLeave={() => setHover(0)}
-                      onClick={() => setAvis(p => ({ ...p, note: n }))}
-                      className="transition-transform hover:scale-110">
-                      <Star className={`w-10 h-10 transition-all duration-150 ${n <= active ? 'fill-yellow-400 text-yellow-400 drop-shadow-md' : 'text-white/30'}`} />
-                    </button>
-                  ))}
-                </div>
-                <p className={`text-sm font-semibold transition-all duration-200 ${active ? 'text-yellow-300' : 'text-white/40'}`}>
-                  {active ? LABELS[active] : 'Cliquez pour noter'}
-                </p>
-              </div>
+// ─── FAQ ─────────────────────────────────────────────────────────────────────
+const FAQ_ITEMS = [
+  {
+    q: "Quel est le délai moyen de remboursement d'un sinistre ?",
+    a: "Le délai moyen est de 48 heures ouvrées après validation du dossier complet. Notre workflow automatisé notifie l'assuré à chaque étape.",
+  },
+  {
+    q: "Les données médicales sont-elles sécurisées ?",
+    a: "Oui. Toutes les données sont chiffrées de bout en bout, hébergées sur des serveurs conformes aux normes locales et accessibles uniquement aux personnes autorisées. Nous appliquons les principes de la loi sénégalaise sur la protection des données personnelles.",
+  },
+  {
+    q: "Puis-je gérer plusieurs polices famille et groupe ?",
+    a: "Absolument. La plateforme gère les polices individuelles, familiales et de groupe avec des paramètres de garanties différenciés. Chaque membre bénéficie de sa propre carte d'assurance avec QR Code.",
+  },
+  {
+    q: "Comment se passe l'intégration avec mon système existant ?",
+    a: "Nous proposons une API REST documentée et des exports CSV/Excel. Notre équipe technique vous accompagne pendant toute la phase d'intégration, sans frais supplémentaires.",
+  },
+  {
+    q: "Puis-je résilier à tout moment ?",
+    a: "Oui, sans engagement à durée minimale pour les formules mensuelle. Un préavis de 30 jours est requis. Vos données vous sont restituées dans les 15 jours suivant la résiliation.",
+  },
+];
 
-              {/* Champs */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="flex items-center gap-1.5 text-white/70 text-xs mb-1.5 font-medium">
-                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                    Nom *
-                  </label>
-                  <input value={avis.nom} onChange={set('nom')} placeholder="Votre nom" required
-                    className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/40" />
-                </div>
-                <div>
-                  <label className="flex items-center gap-1.5 text-white/70 text-xs mb-1.5 font-medium">
-                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-                    Email *
-                  </label>
-                  <input type="email" value={avis.email} onChange={set('email')} placeholder="votre@email.com" required
-                    className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/40" />
-                </div>
-              </div>
-              <div>
-                <label className="flex items-center gap-1.5 text-white/70 text-xs mb-1.5 font-medium">
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                  Votre message *
-                </label>
-                <textarea value={avis.message} onChange={set('message')} rows={4} placeholder="Décrivez votre expérience…" required
-                  className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/40 resize-none" />
-              </div>
+// ─── Étapes How it works ──────────────────────────────────────────────────────
+const HOW_IT_WORKS = [
+  {
+    step: "01",
+    icon: Users,
+    title: "Créez votre compte",
+    desc: "Inscription en 2 minutes. Choisissez votre profil — prestataire de santé ou assuré — et renseignez vos informations.",
+    color: "bg-blue-100 text-blue-700",
+    border: "border-blue-200",
+  },
+  {
+    step: "02",
+    icon: Shield,
+    title: "Accédez à vos services",
+    desc: "Prestataire : consultez vos patients, rédigez prescriptions et prestations. Assuré : retrouvez votre police, vos garanties et votre carte QR Code.",
+    color: "bg-purple-100 text-purple-700",
+    border: "border-purple-200",
+  },
+  {
+    step: "03",
+    icon: BarChart2,
+    title: "Suivez en temps réel",
+    desc: "Prestataire : tracez vos actes et remboursements. Assuré : déclarez un sinistre et suivez chaque étape jusqu'au paiement, avec alertes instantanées.",
+    color: "bg-emerald-100 text-emerald-700",
+    border: "border-emerald-200",
+  },
+];
 
-              <button type="submit" disabled={avis.note === 0}
-                className="w-full bg-white text-blue-700 font-bold py-3 rounded-xl hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg">
-                <svg className="w-4 h-4 fill-yellow-400 text-yellow-400" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                Envoyer mon avis
-              </button>
-            </form>
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
 
 // ─── Composant count-up ───────────────────────────────────────────────────────
-function CountUp({ to, suffix = '', decimals = 0 }: { to: number; suffix?: string; decimals?: number }) {
+function CountUp({ to, suffix = "", decimals = 0 }: { to: number; suffix?: string; decimals?: number }) {
   const [val, setVal] = useState(0);
-  const elRef    = useRef<HTMLSpanElement>(null);
-  const started  = useRef(false);
+  const elRef   = useRef<HTMLSpanElement>(null);
+  const started = useRef(false);
   useEffect(() => {
     const el = elRef.current;
     if (!el) return;
@@ -131,50 +132,114 @@ function CountUp({ to, suffix = '', decimals = 0 }: { to: number; suffix?: strin
   return <span ref={elRef}>{decimals > 0 ? val.toFixed(decimals) : val}{suffix}</span>;
 }
 
+// ─── Composant FAQ item ───────────────────────────────────────────────────────
+function FaqItem({ q, a }: { q: string; a: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className={`border rounded-xl overflow-hidden transition-colors ${open ? "border-blue-300 bg-blue-50/50" : "border-gray-200 bg-white"}`}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-5 py-4 text-left gap-4"
+      >
+        <span className="font-semibold text-gray-900 text-sm sm:text-base">{q}</span>
+        <ChevronDown
+          size={18}
+          className={`flex-shrink-0 text-blue-600 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <p className="px-5 pb-5 text-gray-600 text-sm leading-relaxed">{a}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ─── Liens NavBar (composant unique pour éviter la duplication) ───────────────
+function NavLinks({
+  scrolled,
+  onSection,
+  onNavigate,
+  mobile = false,
+  onClose,
+}: {
+  scrolled: boolean;
+  onSection: (id: string) => void;
+  onNavigate: (path: string) => void;
+  mobile?: boolean;
+  onClose?: () => void;
+}) {
+  const base    = mobile
+    ? "w-full text-left block px-4 py-2.5 rounded-lg transition-colors font-medium text-sm"
+    : "px-3 py-1.5 rounded-lg transition-all text-sm font-medium";
+  const color   = scrolled
+    ? "text-gray-700 hover:text-blue-600 hover:bg-blue-50"
+    : mobile
+      ? "text-gray-700 hover:text-blue-600 hover:bg-blue-50"
+      : "text-white/90 hover:text-white hover:bg-white/20";
+
+  const go = (fn: () => void) => { fn(); onClose?.(); };
+
+  return (
+    <>
+      <button onClick={() => go(() => onSection("how-it-works"))} className={`${base} ${color}`}>Comment ça marche</button>
+      <button onClick={() => go(() => onSection("features"))}     className={`${base} ${color}`}>Fonctionnalités</button>
+      <button onClick={() => go(() => onSection("testimonials"))} className={`${base} ${color}`}>Témoignages</button>
+      <button onClick={() => go(() => onNavigate("/contact"))}    className={`${base} ${color}`}>Contact</button>
+      {mobile ? (
+        <>
+          <div className={`border-t my-2 ${scrolled ? "border-gray-100" : "border-gray-100"}`} />
+          <Button onClick={() => go(() => onNavigate("/login"))} variant="outline" className="w-full">Connexion</Button>
+          <Button onClick={() => go(() => onNavigate("/login"))} className="w-full bg-blue-600 hover:bg-blue-700 mt-1">Commencer</Button>
+        </>
+      ) : (
+        <>
+          <div className="w-px h-5 mx-1.5 bg-white/30" style={{ background: scrolled ? "#e5e7eb" : undefined }} />
+          <button onClick={() => onNavigate("/login")}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${scrolled ? "text-gray-700 hover:text-blue-600 hover:bg-blue-50" : "text-white/90 hover:text-white hover:bg-white/20"}`}>
+            Connexion
+          </button>
+          <button onClick={() => onNavigate("/login")}
+            className={`ml-1.5 px-4 py-1.5 text-sm font-semibold rounded-xl shadow transition-colors whitespace-nowrap ${scrolled ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-white text-blue-700 hover:bg-blue-50"}`}>
+            Commencer
+          </button>
+        </>
+      )}
+    </>
+  );
+}
+
+// ─── Page principale ──────────────────────────────────────────────────────────
 const Index = () => {
   const navigate = useNavigate();
-  const [currentSlide, setCurrentSlide] = useState(0);
+  const [currentSlide,   setCurrentSlide]   = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [navScrolled, setNavScrolled] = useState(false);
-  const scrollRef  = useRef<HTMLDivElement>(null);
+  const [navScrolled,    setNavScrolled]    = useState(false);
 
-  const scrollToSection = (id: string) => {
-    const el = document.getElementById(id);
-    if (el && scrollRef.current) {
-      scrollRef.current.scrollTo({ top: el.offsetTop - 80, behavior: "smooth" });
-    }
-  };
-  const statsRef   = useRef(null);
+  // html/body ont overflow:hidden (requis par les pages avec sidebar).
+  // La page d'accueil est donc son propre conteneur de scroll.
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const statsRef    = useRef(null);
   const statsInView = useInView(statsRef, { once: true, margin: "-80px" });
 
-
-  const slides = [
-    {
-      title: "Gérez vos assurances en toute simplicité",
-      subtitle: "Une plateforme complète pour tous vos besoins d'assurance santé",
-      gradient: "from-blue-900/80 to-blue-600/60",
-      image: "/images/slide1.jpg"
-    },
-    {
-      title: "Suivi en temps réel de vos sinistres",
-      subtitle: "Traitez les demandes de remboursement rapidement et efficacement",
-      gradient: "from-blue-900/80 to-blue-600/60",
-      image: "/images/slide2.jpg"
-    },
-    {
-      title: "Sécurité et conformité garanties",
-      subtitle: "Vos données protégées selon les normes les plus strictes",
-      gradient: "from-blue-900/80 to-blue-600/60",
-      image: "/images/slide3.jpg"
+  const scrollToSection = (id: string) => {
+    setMobileMenuOpen(false);
+    const container = scrollRef.current;
+    const el = document.getElementById(id);
+    if (container && el) {
+      container.scrollTo({ top: el.offsetTop - 80, behavior: "smooth" });
     }
-  ];
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % slides.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, []);
+  };
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -184,160 +249,204 @@ const Index = () => {
     return () => el.removeEventListener("scroll", onScroll);
   }, []);
 
-  const testimonials = [
-    { name: "Aïssatou Diallo", role: "Directrice des Ressources Humaines", text: "Depuis que nous utilisons cette plateforme, la gestion de nos 200 assurés est devenue un jeu d'enfant. Gain de temps énorme.", rating: 5 },
-    { name: "Mamadou Ndiaye", role: "Gérant, Cabinet Médical Dakar", text: "Interface claire, remboursements traités en moins de 48 h. Nos patients sont très satisfaits du service.", rating: 5 },
-    { name: "Fatoumata Sow", role: "Responsable Santé & Prévoyance", text: "Le suivi en temps réel des sinistres a complètement transformé notre façon de travailler. Outil indispensable.", rating: 5 },
+  const slides = [
+    {
+      title: "Gérez vos assurances en toute simplicité",
+      subtitle: "Une plateforme complète pour tous vos besoins d'assurance santé",
+      gradient: "from-blue-900/85 to-blue-700/65",
+      image: "/images/slide1.jpg",
+    },
+    {
+      title: "Suivi en temps réel de vos sinistres",
+      subtitle: "Traitez les demandes de remboursement rapidement et efficacement",
+      gradient: "from-slate-900/85 to-blue-800/65",
+      image: "/images/slide2.jpg",
+    },
+    {
+      title: "Sécurité et conformité garanties",
+      subtitle: "Vos données protégées selon les normes les plus strictes",
+      gradient: "from-blue-950/85 to-indigo-700/65",
+      image: "/images/slide3.jpg",
+    },
   ];
 
+  useEffect(() => {
+    const t = setInterval(() => setCurrentSlide(p => (p + 1) % slides.length), 5000);
+    return () => clearInterval(t);
+  }, []);
+
   return (
-    <div ref={scrollRef} className="min-h-screen" style={{ backgroundColor: '#E8F4F8', overflowY: 'auto', height: '100vh' }}>
-      {/* Navbar */}
-      <nav className={`fixed z-[100] top-3 left-1/2 -translate-x-1/2 w-[min(860px,calc(100vw-2rem))] backdrop-blur-md border rounded-2xl transition-all duration-300 ${
-        navScrolled
-          ? "bg-white/98 border-gray-200 shadow-lg"
-          : "bg-white/15 border-white/30"
+    <div ref={scrollRef} className="min-h-screen bg-[#E8F4F8]" style={{ height: "100vh", overflowY: "auto" }}>
+
+      {/* ── Navbar ──────────────────────────────────────────────────────────── */}
+      <nav className={`fixed z-[100] top-3 left-1/2 -translate-x-1/2 w-[min(920px,calc(100vw-2rem))] backdrop-blur-md border rounded-2xl transition-all duration-300 ${
+        navScrolled ? "bg-white/98 border-gray-200 shadow-lg" : "bg-white/15 border-white/30"
       }`}>
         <div className="px-4 xl:px-5">
-          <div className="flex items-center justify-between h-12">
-            <div className="flex items-center group cursor-pointer shrink-0" onClick={() => navigate('/')}>
-              <img src="/logo1.png" alt="Logo" className="h-11 w-auto object-contain group-hover:scale-105 transition-transform" />
-            </div>
+          <div className="flex items-center justify-between h-16">
+            <button onClick={() => navigate("/")} className="flex items-center group shrink-0">
+              <img src="/logo1.png" alt="Logo Papy Services Assurances" className="h-11 w-auto object-contain group-hover:scale-105 transition-transform" />
+            </button>
 
             <div className="hidden md:flex items-center gap-0.5">
-              {navScrolled ? (
-                <>
-                  <button onClick={() => scrollToSection("features")}     className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50">Fonctionnalités</button>
-                  <button onClick={() => scrollToSection("testimonials")} className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50">Témoignages</button>
-                  <button onClick={() => navigate('/contact')} className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50">Contact</button>
-                  <div className="w-px h-5 mx-1.5 bg-gray-200" />
-                  <button onClick={() => navigate('/login')} className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all text-gray-700 hover:text-blue-600 hover:bg-blue-50">Connexion</button>
-                  <button onClick={() => navigate('/login')} className="ml-1.5 px-4 py-1.5 bg-blue-600 text-white text-sm font-semibold rounded-xl shadow hover:bg-blue-700 transition-colors whitespace-nowrap">Commencer</button>
-                </>
-              ) : (
-                <>
-                  <button onClick={() => scrollToSection("features")}     className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-white/90 hover:text-white hover:bg-white/20">Fonctionnalités</button>
-                  <button onClick={() => scrollToSection("testimonials")} className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-white/90 hover:text-white hover:bg-white/20">Témoignages</button>
-                  <button onClick={() => navigate('/contact')} className="px-3 py-1.5 rounded-lg transition-all text-sm font-medium text-white/90 hover:text-white hover:bg-white/20">Contact</button>
-                  <div className="w-px h-5 mx-1.5 bg-white/30" />
-                  <button onClick={() => navigate('/login')} className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all text-white/90 hover:text-white hover:bg-white/20">Connexion</button>
-                  <button onClick={() => navigate('/login')} className="ml-1.5 px-4 py-1.5 bg-white text-blue-700 text-sm font-semibold rounded-xl shadow hover:bg-blue-50 transition-colors whitespace-nowrap">Commencer</button>
-                </>
-              )}
+              <NavLinks scrolled={navScrolled} onSection={scrollToSection} onNavigate={navigate} />
             </div>
 
-            <button className={`md:hidden p-2 rounded-lg transition-colors ${navScrolled ? "text-gray-700 hover:bg-gray-100" : "text-white hover:bg-white/20"}`}
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-              <Menu className="w-6 h-6" />
+            <button
+              className={`md:hidden p-2 rounded-lg transition-colors ${navScrolled ? "text-gray-700 hover:bg-gray-100" : "text-white hover:bg-white/20"}`}
+              onClick={() => setMobileMenuOpen(v => !v)}
+              aria-label="Menu"
+            >
+              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
 
-          {mobileMenuOpen && (
-            <div className={`md:hidden py-3 space-y-1 border-t ${navScrolled ? "border-gray-100" : "border-white/20"}`}>
-              {navScrolled ? (
-                <>
-                  <button onClick={() => { scrollToSection("features"); setMobileMenuOpen(false); }}     className="w-full text-left block px-4 py-2.5 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-medium text-sm">Fonctionnalités</button>
-                  <button onClick={() => { scrollToSection("testimonials"); setMobileMenuOpen(false); }} className="w-full text-left block px-4 py-2.5 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-medium text-sm">Témoignages</button>
-                  <button onClick={() => navigate('/contact')} className="w-full text-left px-4 py-2.5 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-medium text-sm">Contact</button>
-                  <div className="border-t border-gray-100 my-2" />
-                  <Button onClick={() => navigate('/login')} variant="outline" className="w-full">Connexion</Button>
-                  <Button onClick={() => navigate('/login')} className="w-full bg-blue-600 hover:bg-blue-700">Commencer</Button>
-                </>
-              ) : (
-                <>
-                  <button onClick={() => { scrollToSection("features"); setMobileMenuOpen(false); }}     className="w-full text-left block px-4 py-2.5 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors font-medium text-sm">Fonctionnalités</button>
-                  <button onClick={() => { scrollToSection("testimonials"); setMobileMenuOpen(false); }} className="w-full text-left block px-4 py-2.5 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors font-medium text-sm">Témoignages</button>
-                  <button onClick={() => navigate('/contact')} className="w-full text-left px-4 py-2.5 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors font-medium text-sm">Contact</button>
-                  <div className="border-t border-white/20 my-2" />
-                  <Button onClick={() => navigate('/login')} variant="outline" className="w-full border-white/30 text-white hover:bg-white/10">Connexion</Button>
-                  <Button onClick={() => navigate('/login')} className="w-full bg-white text-blue-700 hover:bg-blue-50">Commencer</Button>
-                </>
-              )}
-            </div>
-          )}
+          <AnimatePresence>
+            {mobileMenuOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className={`md:hidden overflow-hidden py-3 space-y-1 border-t ${navScrolled ? "border-gray-100" : "border-white/20"}`}
+              >
+                <NavLinks
+                  scrolled={true}
+                  onSection={scrollToSection}
+                  onNavigate={navigate}
+                  mobile
+                  onClose={() => setMobileMenuOpen(false)}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </nav>
 
-      {/* Hero Slider */}
+      {/* ── Hero Slider ──────────────────────────────────────────────────────── */}
       <div className="relative h-[600px] overflow-hidden pt-20">
         {slides.map((slide, idx) => (
           <div
             key={idx}
-            className={`absolute inset-0 transition-opacity duration-1000 ${idx === currentSlide ? 'opacity-100' : 'opacity-0'}`}
+            className={`absolute inset-0 transition-opacity duration-1000 ${idx === currentSlide ? "opacity-100" : "opacity-0"}`}
           >
-            <div className="relative h-full">
-              <img src={slide.image} alt={slide.title} className="w-full h-full object-cover" />
-              <div className={`absolute inset-0 bg-gradient-to-r ${slide.gradient} opacity-85`}></div>
-              <div className="absolute inset-0 flex items-center justify-center text-white">
-                <div className="container mx-auto px-4 text-center">
-                  <h1 className="text-3xl sm:text-5xl md:text-7xl font-bold mb-4 sm:mb-6 animate-fade-in drop-shadow-lg">{slide.title}</h1>
-                  <p className="text-base sm:text-xl md:text-2xl max-w-3xl mx-auto drop-shadow-md px-2">{slide.subtitle}</p>
-                </div>
+            <img src={slide.image} alt={slide.title} className="w-full h-full object-cover" />
+            <div className={`absolute inset-0 bg-gradient-to-r ${slide.gradient}`} />
+            <div className="absolute inset-0 flex items-center justify-center text-white">
+              <div className="container mx-auto px-4 text-center">
+                <motion.h1
+                  key={`title-${idx}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: idx === currentSlide ? 1 : 0, y: idx === currentSlide ? 0 : 20 }}
+                  transition={{ duration: 0.6 }}
+                  className="text-3xl sm:text-5xl md:text-6xl font-bold mb-4 drop-shadow-lg"
+                >
+                  {slide.title}
+                </motion.h1>
+                <p className="text-base sm:text-xl md:text-2xl max-w-3xl mx-auto drop-shadow-md px-2 text-white/90">
+                  {slide.subtitle}
+                </p>
               </div>
             </div>
           </div>
         ))}
 
-        {/* Bouton fixe — ne bouge pas avec les slides */}
-        <div className="absolute bottom-14 left-1/2 -translate-x-1/2 z-10">
+        {/* CTAs héro */}
+        <div className="absolute bottom-14 left-1/2 -translate-x-1/2 z-10 flex items-center gap-3">
           <button
-            onClick={() => navigate('/login')}
-            className="flex items-center gap-2 bg-white text-blue-600 font-semibold text-sm sm:text-base px-6 sm:px-10 py-3 rounded-full shadow-xl hover:bg-gray-100 transition-colors whitespace-nowrap"
+            onClick={() => navigate("/login")}
+            className="flex items-center gap-2 bg-white text-blue-600 font-semibold text-sm sm:text-base px-6 sm:px-9 py-3 rounded-full shadow-xl hover:bg-gray-50 transition-colors whitespace-nowrap"
           >
-            Démarrer maintenant <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
+            Démarrer maintenant <ArrowRight className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => scrollToSection("how-it-works")}
+            className="flex items-center gap-2 bg-white/15 border border-white/40 text-white font-semibold text-sm sm:text-base px-6 sm:px-9 py-3 rounded-full hover:bg-white/25 transition-colors whitespace-nowrap backdrop-blur-sm"
+          >
+            Voir comment ça marche
           </button>
         </div>
 
-        {/* Slide indicators */}
+        {/* Indicateurs slides */}
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
           {slides.map((_, idx) => (
             <button
               key={idx}
               onClick={() => setCurrentSlide(idx)}
-              className={`h-2 rounded-full transition-all ${idx === currentSlide ? 'bg-white w-8' : 'bg-white/50 w-2'}`}
+              className={`h-2 rounded-full transition-all ${idx === currentSlide ? "bg-white w-8" : "bg-white/50 w-2"}`}
+              aria-label={`Slide ${idx + 1}`}
             />
           ))}
         </div>
       </div>
 
-      {/* Stats Bar */}
-      <div className="relative z-10">
-        <div className="container mx-auto px-4 mt-8">
-          <motion.div
-            ref={statsRef}
-            initial={{ opacity: 0, y: 40 }}
-            animate={statsInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            className="bg-blue-600 text-white py-12 rounded-3xl shadow-2xl"
-          >
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={statsInView ? { opacity: 1, y: 0 } : {}} transition={{ delay: 0.1 }}>
-                <div className="flex items-center justify-center mb-2"><TrendingUp className="w-8 h-8" /></div>
-                <div className="text-4xl font-bold mb-1">{statsInView ? <CountUp to={10} suffix="K+" /> : "0"}</div>
-                <div className="text-blue-100">Assurés actifs</div>
+      {/* ── Stats Bar (chiffres marketing statiques) ─────────────────────────── */}
+      <div className="container mx-auto px-4 mt-8 max-w-5xl" ref={statsRef}>
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={statsInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="bg-blue-600 text-white py-6 px-6 rounded-2xl shadow-2xl"
+        >
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+            {MARKETING_STATS.map(({ icon: Icon, value, label, suffix }, i) => (
+              <motion.div
+                key={label}
+                initial={{ opacity: 0, y: 20 }}
+                animate={statsInView ? { opacity: 1, y: 0 } : {}}
+                transition={{ delay: 0.1 * (i + 1) }}
+              >
+                <div className="flex items-center justify-center mb-1">
+                  <Icon className="w-5 h-5" />
+                </div>
+                <div className="text-2xl font-bold mb-0.5">
+                  {statsInView
+                    ? <CountUp to={parseInt(value.replace("+", "").replace("%", ""))} suffix={value.includes("+") ? "+" : suffix} />
+                    : "0"}
+                </div>
+                <div className="text-blue-100 text-xs">{label}</div>
               </motion.div>
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={statsInView ? { opacity: 1, y: 0 } : {}} transition={{ delay: 0.2 }}>
-                <div className="flex items-center justify-center mb-2"><Clock className="w-8 h-8" /></div>
-                <div className="text-4xl font-bold mb-1">24/7</div>
-                <div className="text-blue-100">Support disponible</div>
-              </motion.div>
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={statsInView ? { opacity: 1, y: 0 } : {}} transition={{ delay: 0.3 }}>
-                <div className="flex items-center justify-center mb-2"><Award className="w-8 h-8" /></div>
-                <div className="text-4xl font-bold mb-1">{statsInView ? <CountUp to={99.9} suffix="%" decimals={1} /> : "0%"}</div>
-                <div className="text-blue-100">Satisfaction client</div>
-              </motion.div>
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={statsInView ? { opacity: 1, y: 0 } : {}} transition={{ delay: 0.4 }}>
-                <div className="flex items-center justify-center mb-2"><Shield className="w-8 h-8" /></div>
-                <div className="text-4xl font-bold mb-1">{statsInView ? <CountUp to={100} suffix="%" /> : "0%"}</div>
-                <div className="text-blue-100">Sécurisé</div>
-              </motion.div>
-            </div>
-          </motion.div>
-        </div>
+            ))}
+          </div>
+        </motion.div>
       </div>
 
-      {/* Features Section with Sticky Images */}
-      <section id="features" className="relative z-20 scroll-mt-20">
+      {/* ── Comment ça marche ────────────────────────────────────────────────── */}
+      <section id="how-it-works" className="py-20 scroll-mt-24">
+        <div className="container mx-auto px-6 md:px-10 max-w-5xl">
+          <div className="text-center mb-12">
+            <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-600 mb-3">Démarrage rapide</span>
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">Comment ça marche ?</h2>
+            <p className="text-gray-500 max-w-xl mx-auto">Opérationnel en moins d'une journée. Aucune installation logicielle requise.</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8 relative">
+            {/* Ligne de connexion desktop */}
+            <div className="hidden md:block absolute top-10 left-1/6 right-1/6 h-px bg-gradient-to-r from-blue-200 via-purple-200 to-emerald-200" style={{ left: "16.5%", right: "16.5%" }} />
+            {HOW_IT_WORKS.map(({ step, icon: Icon, title, desc, color, border }, i) => (
+              <motion.div
+                key={step}
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-60px" }}
+                transition={{ delay: i * 0.15 }}
+                className={`relative bg-white rounded-2xl border ${border} p-6 shadow-sm hover:shadow-md transition-shadow text-center`}
+              >
+                <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl ${color} mb-4 mx-auto`}>
+                  <Icon size={28} />
+                </div>
+                <div className="absolute -top-3 -right-3 w-7 h-7 bg-white border-2 border-gray-200 rounded-full flex items-center justify-center text-xs font-bold text-gray-500">
+                  {step}
+                </div>
+                <h3 className="font-bold text-gray-900 text-lg mb-2">{title}</h3>
+                <p className="text-gray-500 text-sm leading-relaxed">{desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Features Section ─────────────────────────────────────────────────── */}
+      <section id="features" className="relative z-20 scroll-mt-24">
         <FeatureSection
           icon={<Users className="w-4 h-4" />}
           badge="Gestion"
@@ -348,7 +457,6 @@ const Index = () => {
           imagePosition="right"
           bgColor="#F0F8FB"
         />
-        
         <FeatureSection
           icon={<FileText className="w-4 h-4" />}
           badge="Contrats"
@@ -359,7 +467,6 @@ const Index = () => {
           imagePosition="left"
           bgColor="#E8F4F8"
         />
-        
         <FeatureSection
           icon={<Activity className="w-4 h-4" />}
           badge="Sinistres"
@@ -370,7 +477,6 @@ const Index = () => {
           imagePosition="right"
           bgColor="#F0F8FB"
         />
-        
         <FeatureSection
           icon={<Shield className="w-4 h-4" />}
           badge="Sécurité"
@@ -383,236 +489,258 @@ const Index = () => {
         />
       </section>
 
-      {/* Benefits Section */}
-      <section className="py-20 -mt-10 relative z-30 rounded-t-[50px]" style={{ backgroundColor: '#E8F4F8' }}>
-        <div className="container mx-auto px-6 md:px-10">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            <div>
-              <h2 className="text-4xl font-bold mb-5">Pourquoi choisir notre plateforme ?</h2>
-              <div className="space-y-1">
-                {[
-                  "Interface intuitive et moderne",
-                  "Gestion complète des polices et sinistres",
-                  "Suivi en temps réel des remboursements",
-                  "Cartes d'assurance avec QR Code",
-                  "Rapports et analyses détaillés",
-                  "Support client réactif 24/7"
-                ].map((benefit, idx) => (
-                  <div key={idx} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100/70 transition-colors">
-                    <div className="w-7 h-7 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <CheckCircle2 className="w-4 h-4 text-green-600" />
-                    </div>
-                    <span className="text-base text-gray-700">{benefit}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="relative">
-              <div className="aspect-square bg-gradient-to-br from-blue-100 to-purple-100 rounded-3xl p-8 flex items-center justify-center">
-                <div className="text-center">
-                  <img src="/logo1.png" alt="Logo" className="w-32 h-32 object-contain mx-auto mb-4" />
-                  <p className="text-2xl font-bold text-gray-800">Sécurité & Fiabilité</p>
-                  <p className="text-gray-600 mt-2">Certifié et conforme</p>
-                </div>
-              </div>
-            </div>
+      {/* ── Benefits ────────────────────────────────────────────────────────── */}
+      <section className="py-20 mt-6 relative z-30 rounded-t-[50px] bg-[#E8F4F8]">
+        <div className="container mx-auto px-6 md:px-10 max-w-4xl">
+          <div className="text-center mb-10">
+            <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-600 mb-3">Avantages</span>
+            <h2 className="text-3xl sm:text-4xl font-bold">Pourquoi choisir notre plateforme ?</h2>
           </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section id="testimonials" className="py-20 -mt-10 relative z-40 rounded-t-[50px] scroll-mt-20" style={{ backgroundColor: '#F0F8FB' }}>
-        <div className="container mx-auto px-6 md:px-10">
-          <div className="text-center mb-16">
-            <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-600 mb-3">Témoignages</span>
-            <h2 className="text-4xl font-bold mb-4 text-gray-900">Ce que disent nos clients</h2>
-            <div className="w-12 h-1 bg-blue-600 rounded-full mx-auto mt-3" />
-            <p className="text-xl text-gray-500 mt-4">Des milliers d'entreprises nous font confiance</p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, idx) => (
-              <Card key={idx} className="p-8 border-none shadow-lg hover:shadow-xl transition-shadow border-t-4 border-t-blue-600">
-                <div className="flex gap-1 mb-4">
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} className="w-5 h-5 fill-blue-600 text-blue-600" />
-                  ))}
+          <div className="grid sm:grid-cols-2 gap-3">
+            {[
+              {
+                text: "Interface intuitive, prise en main en moins d'une heure",
+                svg: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-blue-600"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
+              },
+              {
+                text: "Cartes d'assurance avec QR Code vérifiable instantanément",
+                svg: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-blue-600"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
+              },
+              {
+                text: "Suivi des sinistres et remboursements étape par étape",
+                svg: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-blue-600"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+              },
+              {
+                text: "Rapports et analyses exportables (CSV, PDF)",
+                svg: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-blue-600"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,
+              },
+              {
+                text: "Consultations, prescriptions et prestations centralisées",
+                svg: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-blue-600"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
+              },
+              {
+                text: "Hébergement sécurisé, conformité CDP Sénégal",
+                svg: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-blue-600"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
+              },
+            ].map(({ text, svg }, idx) => (
+              <div key={idx} className="flex items-center gap-3 px-4 py-3.5 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                <div className="w-9 h-9 bg-blue-50 rounded-full flex items-center justify-center flex-shrink-0">
+                  {svg}
                 </div>
-                <p className="text-gray-700 mb-6 italic">"{testimonial.text}"</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
-                    {testimonial.name[0]}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900">{testimonial.name}</p>
-                    <p className="text-sm text-gray-500">{testimonial.role}</p>
-                  </div>
-                </div>
-              </Card>
+                <span className="text-sm text-gray-700 leading-snug">{text}</span>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Formulaire avis clients */}
-      <FeedbackForm />
 
-      {/* Registration CTA Section */}
-      <section className="py-20 -mt-10 relative z-50 rounded-t-[50px]" style={{ backgroundColor: '#E8F4F8' }}>
+      {/* ── Témoignages ─────────────────────────────────────────────────────── */}
+      <section id="testimonials" className="py-16 relative z-40 rounded-t-[50px] scroll-mt-24 bg-[#F0F8FB]">
         <div className="container mx-auto px-6 md:px-10">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-6 text-gray-900">Rejoignez notre plateforme</h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">Créez votre compte en tant que prestataire ou client</p>
+          <div className="text-center mb-10">
+            <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-600 mb-3">Témoignages</span>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-2 text-gray-900">Ce que disent nos clients</h2>
+            <div className="w-12 h-1 bg-blue-600 rounded-full mx-auto mt-3" />
           </div>
 
-          {/* Registration Cards */}
-          <div className="grid md:grid-cols-2 gap-8 mb-12 max-w-3xl mx-auto">
-            {/* Prestataire Card */}
-            <Card className="relative overflow-hidden hover:shadow-xl transition-all duration-300 border-2 hover:border-brand">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-brand/10 rounded-bl-full opacity-50"></div>
+          <div className="grid md:grid-cols-3 gap-8">
+            {TESTIMONIALS.map(({ name, role, company, text, rating, initials, color }) => (
+              <motion.div
+                key={name}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-40px" }}
+              >
+                <Card className="p-6 border-none shadow-lg hover:shadow-xl transition-shadow h-full flex flex-col">
+                  <div className="flex gap-1 mb-4">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`w-4 h-4 ${i < rating ? "fill-yellow-400 text-yellow-400" : "fill-gray-200 text-gray-200"}`}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-gray-700 italic text-sm leading-relaxed flex-1">"{text}"</p>
+                  <div className="flex items-center gap-3 mt-5 pt-4 border-t border-gray-100">
+                    <div className={`w-10 h-10 rounded-full ${color} flex items-center justify-center text-white text-sm font-bold shrink-0`}>
+                      {initials}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900 text-sm">{name}</p>
+                      <p className="text-xs text-gray-400">{role}</p>
+                      <p className="text-xs text-blue-600 font-medium">{company}</p>
+                    </div>
+                  </div>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FAQ ─────────────────────────────────────────────────────────────── */}
+      <section id="faq" className="py-20 bg-white relative z-45">
+        <div className="container mx-auto px-6 md:px-10 max-w-3xl">
+          <div className="text-center mb-10">
+            <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-600 mb-3">FAQ</span>
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">Questions fréquentes</h2>
+            <p className="text-gray-500">Vous ne trouvez pas la réponse ?{" "}
+              <button onClick={() => navigate("/contact")} className="text-blue-600 underline underline-offset-2 hover:text-blue-700">
+                Contactez-nous
+              </button>
+            </p>
+          </div>
+          <div className="space-y-3">
+            {FAQ_ITEMS.map(item => <FaqItem key={item.q} q={item.q} a={item.a} />)}
+          </div>
+        </div>
+      </section>
+
+      {/* ── CTA Inscription ─────────────────────────────────────────────────── */}
+      <section className="py-20 relative z-50 rounded-t-[50px] bg-[#E8F4F8]">
+        <div className="container mx-auto px-6 md:px-10">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 text-gray-900">Rejoignez notre plateforme</h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">Créez votre compte en tant que prestataire de santé ou assuré</p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto mb-10">
+            <Card className="relative overflow-hidden hover:shadow-xl transition-all duration-300 border-2 hover:border-blue-600">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/10 rounded-bl-full opacity-50" />
               <div className="relative p-8">
-                <div className="w-12 h-12 bg-brand rounded-xl flex items-center justify-center mb-4">
+                <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mb-4">
                   <Stethoscope className="w-6 h-6 text-white" />
                 </div>
                 <h3 className="text-2xl font-bold mb-2 text-gray-900">Prestataire</h3>
-                <p className="text-gray-600 mb-6">Fournissez vos services de santé et gériez vos consultations, prescriptions et remboursements.</p>
+                <p className="text-gray-600 mb-6 text-sm">Fournissez vos services de santé et gérez vos consultations, prescriptions et remboursements.</p>
                 <ul className="space-y-2 mb-8 text-sm text-gray-700">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-green-600" />
-                    <span>Gestion des consultations</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-green-600" />
-                    <span>Prescriptions simplifiées</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-green-600" />
-                    <span>Suivi des remboursements</span>
-                  </li>
+                  {["Gestion des consultations", "Prescriptions simplifiées", "Suivi des remboursements"].map(f => (
+                    <li key={f} className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-green-600" />{f}</li>
+                  ))}
                 </ul>
-                <Button onClick={() => navigate('/signup?role=prestataire')} className="w-full bg-brand hover:bg-brand-dark">
+                <Button onClick={() => navigate("/signup?role=prestataire")} className="w-full bg-blue-600 hover:bg-blue-700">
                   Créer un compte prestataire
                 </Button>
               </div>
             </Card>
 
-            {/* Client Card */}
             <Card className="relative overflow-hidden hover:shadow-xl transition-all duration-300 border-2 hover:border-emerald-500">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-100 rounded-bl-full opacity-50"></div>
+              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-100 rounded-bl-full opacity-50" />
               <div className="relative p-8">
                 <div className="w-12 h-12 bg-emerald-600 rounded-xl flex items-center justify-center mb-4">
                   <Users className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="text-2xl font-bold mb-2 text-gray-900">Client</h3>
-                <p className="text-gray-600 mb-6">Accédez à vos assurances, consultez vos sinistres et gérez vos remboursements facilement.</p>
+                <h3 className="text-2xl font-bold mb-2 text-gray-900">Client / Assuré</h3>
+                <p className="text-gray-600 mb-6 text-sm">Accédez à vos assurances, consultez vos sinistres et gérez vos remboursements facilement.</p>
                 <ul className="space-y-2 mb-8 text-sm text-gray-700">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-green-600" />
-                    <span>Suivi des assurances</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-green-600" />
-                    <span>Gestion des sinistres</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-green-600" />
-                    <span>Accès aux cartes</span>
-                  </li>
+                  {["Suivi de vos assurances", "Gestion des sinistres", "Carte d'assuré avec QR Code"].map(f => (
+                    <li key={f} className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-green-600" />{f}</li>
+                  ))}
                 </ul>
-                <Button onClick={() => navigate('/signup?role=client')} className="w-full">
+                <Button onClick={() => navigate("/signup?role=client")} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
                   Créer un compte client
                 </Button>
               </div>
             </Card>
           </div>
 
-          {/* Already have account */}
           <div className="text-center">
-            <p className="text-gray-600 text-lg">Vous avez déjà un compte?</p>
-            <Button variant="link" onClick={() => navigate('/login')} className="mt-2 text-blue-600 text-lg">
-              Se connecter maintenant
-            </Button>
+            <p className="text-gray-600">Vous avez déjà un compte ?{" "}
+              <button onClick={() => navigate("/login")} className="text-blue-600 font-semibold hover:underline">
+                Se connecter
+              </button>
+            </p>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer id="contact" className="bg-gray-900 text-gray-300 py-8 relative z-50 scroll-mt-20">
+      {/* ── Footer ──────────────────────────────────────────────────────────── */}
+      <footer id="contact" className="bg-gray-900 text-gray-300 py-10 relative z-50 scroll-mt-20">
         <div className="container mx-auto px-6 md:px-10">
-          <div className="grid md:grid-cols-5 gap-6 mb-6">
+          <div className="grid md:grid-cols-5 gap-8 mb-8">
+            {/* Identité */}
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <img src="/logo1.png" alt="Logo" className="w-10 h-10 object-contain flex-shrink-0" />
-                <span className="text-lg font-bold text-white leading-tight">Papy Services<br/>Assurances</span>
+                <span className="text-lg font-bold text-white leading-tight">Papy Services<br />Assurances</span>
               </div>
-              <p className="text-gray-400">La solution complète pour gérer vos assurances santé avec efficacité.</p>
+              <p className="text-gray-400 text-sm">La solution complète pour gérer vos assurances santé avec efficacité et conformité.</p>
             </div>
 
+            {/* Liens rapides — uniquement pages publiques */}
             <div>
-              <h3 className="text-white font-semibold mb-4">Liens rapides</h3>
-              <ul className="space-y-2">
-                <li><a href="#features" className="hover:text-white transition-colors">Fonctionnalités</a></li>
-                <li><a href="#testimonials" className="hover:text-white transition-colors">Témoignages</a></li>
-                <li><button onClick={() => navigate('/dashboard')} className="hover:text-white transition-colors">Dashboard</button></li>
-                <li><button onClick={() => navigate('/polices')} className="hover:text-white transition-colors">Polices</button></li>
+              <h3 className="text-white font-semibold mb-4">Navigation</h3>
+              <ul className="space-y-2 text-sm">
+                <li><button onClick={() => scrollToSection("how-it-works")} className="hover:text-white transition-colors">Comment ça marche</button></li>
+                <li><button onClick={() => scrollToSection("features")}     className="hover:text-white transition-colors">Fonctionnalités</button></li>
+                <li><button onClick={() => scrollToSection("testimonials")} className="hover:text-white transition-colors">Témoignages</button></li>
+                <li><button onClick={() => scrollToSection("faq")}          className="hover:text-white transition-colors">FAQ</button></li>
               </ul>
             </div>
 
+            {/* Informations légales */}
             <div>
               <h3 className="text-white font-semibold mb-4">Informations légales</h3>
-              <ul className="space-y-2">
-                <li>
-                  <button onClick={() => navigate('/conditions-generales')} className="hover:text-white transition-colors text-left">
-                    Conditions Générales
-                  </button>
-                </li>
+              <ul className="space-y-2 text-sm">
+                <li><button onClick={() => navigate("/conditions-generales")} className="hover:text-white transition-colors text-left">Conditions Générales</button></li>
+                <li><button onClick={() => navigate("/politique-confidentialite")} className="hover:text-white transition-colors text-left">Politique de confidentialité</button></li>
+                <li><button onClick={() => navigate("/mentions-legales")} className="hover:text-white transition-colors text-left">Mentions légales</button></li>
               </ul>
             </div>
 
+            {/* Contact */}
             <div>
               <h3 className="text-white font-semibold mb-4">Contact</h3>
-              <ul className="space-y-3">
+              <ul className="space-y-3 text-sm">
                 <li className="flex items-center gap-2">
-                  <Phone className="w-4 h-4" />
-                  <span>+221 77 527 97 27</span>
+                  <Phone className="w-4 h-4 flex-shrink-0" />
+                  <a href="tel:+221775279727" className="hover:text-white transition-colors">+221 77 527 97 27</a>
                 </li>
                 <li className="flex items-center gap-2">
-                  <Mail className="w-4 h-4" />
-                  <span>bassniang7@yahoo.fr</span>
+                  <Mail className="w-4 h-4 flex-shrink-0" />
+                  <a href="mailto:bassniang7@yahoo.fr" className="hover:text-white transition-colors">bassniang7@yahoo.fr</a>
                 </li>
                 <li className="flex items-start gap-2">
                   <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
                   <span>Rufisque Ouest, Cité Poste, Lot N°67</span>
                 </li>
                 <li className="mt-2">
-                  <button onClick={() => navigate('/contact')} className="text-blue-400 hover:text-white transition-colors text-sm font-medium">
+                  <button onClick={() => navigate("/contact")} className="text-blue-400 hover:text-white transition-colors font-medium">
                     → Formulaire de contact
                   </button>
                 </li>
               </ul>
             </div>
 
+            {/* Réseaux sociaux — liens réels ou retirés si non renseignés */}
             <div>
               <h3 className="text-white font-semibold mb-4">Suivez-nous</h3>
-              <div className="flex gap-4">
-                <a href="#" className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-blue-600 transition-colors" aria-label="Facebook">
+              <div className="flex gap-3">
+                <a
+                  href="https://facebook.com"
+                  target="_blank" rel="noopener noreferrer"
+                  className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-blue-600 transition-colors"
+                  aria-label="Facebook"
+                >
                   <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
                 </a>
-                <a href="#" className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-sky-500 transition-colors" aria-label="Twitter / X">
-                  <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-                </a>
-                <a href="#" className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors" aria-label="LinkedIn">
+                <a
+                  href="https://linkedin.com"
+                  target="_blank" rel="noopener noreferrer"
+                  className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors"
+                  aria-label="LinkedIn"
+                >
                   <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg>
                 </a>
-                <a href="#" className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-pink-600 transition-colors" aria-label="Instagram">
-                  <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path fill="none" stroke="currentColor" strokeWidth="2" d="M2 2h20v20H2z" style={{display:"none"}}/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" fill="none" stroke="currentColor" strokeWidth="2" className="stroke-current"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5" stroke="currentColor" strokeWidth="2"/></svg>
-                </a>
               </div>
+              <p className="text-gray-500 text-xs mt-3">Prochainement sur d'autres réseaux</p>
             </div>
           </div>
 
-          <div className="border-t border-gray-800 pt-4 text-center text-gray-400">
-            <p>&copy; {new Date().getFullYear()} Papy Services Assurances. Tous droits réservés.</p>
+          <div className="border-t border-gray-800 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-gray-500 text-sm">
+            <p>© {new Date().getFullYear()} Papy Services Assurances. Tous droits réservés.</p>
+            <p>Conforme à la loi sénégalaise sur la protection des données personnelles (CDP)</p>
           </div>
         </div>
       </footer>

@@ -4,10 +4,12 @@ import com.assurance.sante.connect.entity.Assure;
 import com.assurance.sante.connect.entity.Police;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface PoliceRepository extends JpaRepository<Police, Long> {
     Optional<Police> findByNumero(String numero);
     void deleteByAssure(Assure assure);
+    List<Police> findByAssureId(Long assureId);
 }

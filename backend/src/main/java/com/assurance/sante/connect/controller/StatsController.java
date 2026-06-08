@@ -4,10 +4,13 @@ import com.assurance.sante.connect.dto.ApiResponse;
 import com.assurance.sante.connect.entity.*;
 import com.assurance.sante.connect.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -18,17 +21,43 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class StatsController {
 
-    private final AssureRepository       assureRepository;
-    private final PoliceRepository       policeRepository;
-    private final SinistreRepository     sinistreRepository;
-    private final PrestataireRepository  prestataireRepository;
-    private final ConsultationRepository consultationRepository;
-    private final PrescriptionRepository prescriptionRepository;
-    private final UserRepository         userRepository;
+    private final AssureRepository         assureRepository;
+    private final PoliceRepository         policeRepository;
+    private final SinistreRepository       sinistreRepository;
+    private final PrestataireRepository    prestataireRepository;
+    private final ConsultationRepository   consultationRepository;
+    private final PrescriptionRepository   prescriptionRepository;
+    private final UserRepository           userRepository;
+    private final PaiementPrimeRepository  paiementPrimeRepository;
 
     private static final DateTimeFormatter MONTH_FMT = DateTimeFormatter.ofPattern("MMM yy", java.util.Locale.FRENCH);
 
+    // ── Statistiques publiques (page d'accueil, sans auth) ───────────────────
+    @GetMapping("/public")
+    @Cacheable(value = "publicStats", unless = "#result == null")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getPublicStats() {
+        long assuresActifs    = assureRepository.findAll().stream()
+            .filter(a -> a.getStatut() == com.assurance.sante.connect.entity.Assure.AssureStatut.ACTIF)
+            .count();
+        long totalPrestataires = prestataireRepository.count();
+        long totalConsultations = consultationRepository.count();
+        long completees = consultationRepository.findAll().stream()
+            .filter(c -> c.getStatut() == com.assurance.sante.connect.entity.Consultation.ConsultationStatut.COMPLETEE)
+            .count();
+        double tauxReussite = totalConsultations == 0 ? 100.0
+            : Math.round((double) completees / totalConsultations * 1000.0) / 10.0;
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("assuresActifs",    assuresActifs);
+        data.put("prestataires",     totalPrestataires);
+        data.put("consultations",    totalConsultations);
+        data.put("tauxReussite",     tauxReussite);
+        return ResponseEntity.ok(ApiResponse.success(data));
+    }
+
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    @Cacheable(value = "stats", unless = "#result == null")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getStats() {
         LocalDateTime now           = LocalDateTime.now();
         LocalDateTime startOfMonth  = now.withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
@@ -176,6 +205,85 @@ public class StatsController {
         result.put("totalPrestataires", prestataireRepository.count());
         result.put("totalConsultations",consultations.size());
         result.put("totalPrescriptions",prescriptionRepository.count());
+
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    /** Tableau de bord financier : encaissements vs remboursements sur 12 mois */
+    @GetMapping("/financier")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getFinancier() {
+        LocalDateTime now          = LocalDateTime.now();
+        LocalDateTime twelveAgo   = now.withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).minusMonths(11);
+        DateTimeFormatter fmt      = DateTimeFormatter.ofPattern("MMM yy", java.util.Locale.FRENCH);
+
+        // Initialiser 12 mois
+        Map<String, long[]> monthly = new TreeMap<>();
+        for (int i = 0; i < 12; i++) {
+            monthly.put(twelveAgo.plusMonths(i).format(fmt), new long[]{0, 0});
+        }
+
+        // Encaissements (primes payées)
+        paiementPrimeRepository.findAll().stream()
+            .filter(p -> p.getStatut() == PaiementPrime.StatutPaiement.PAYE
+                      && p.getDatePaiement() != null
+                      && !p.getDatePaiement().isBefore(twelveAgo))
+            .forEach(p -> {
+                String key = p.getDatePaiement().format(fmt);
+                if (monthly.containsKey(key)) {
+                    monthly.get(key)[0] += p.getMontant() != null ? p.getMontant().longValue() : 0;
+                }
+            });
+
+        // Remboursements (sinistres payés)
+        sinistreRepository.findAll().stream()
+            .filter(s -> s.getStatut() == Sinistre.SinistreStatut.PAYE
+                      && s.getMontantAccorde() != null
+                      && s.getUpdatedAt() != null
+                      && !s.getUpdatedAt().isBefore(twelveAgo))
+            .forEach(s -> {
+                String key = s.getUpdatedAt().format(fmt);
+                if (monthly.containsKey(key)) {
+                    monthly.get(key)[1] += s.getMontantAccorde().longValue();
+                }
+            });
+
+        List<Map<String, Object>> cashflow = monthly.entrySet().stream().map(e -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("mois",          e.getKey());
+            m.put("encaissements", e.getValue()[0]);
+            m.put("remboursements",e.getValue()[1]);
+            m.put("solde",         e.getValue()[0] - e.getValue()[1]);
+            return m;
+        }).collect(Collectors.toList());
+
+        // KPIs globaux
+        BigDecimal totalEncaissements = paiementPrimeRepository.findAll().stream()
+            .filter(p -> p.getStatut() == PaiementPrime.StatutPaiement.PAYE && p.getMontant() != null)
+            .map(PaiementPrime::getMontant).reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalRemboursements = sinistreRepository.findAll().stream()
+            .filter(s -> s.getStatut() == Sinistre.SinistreStatut.PAYE && s.getMontantAccorde() != null)
+            .map(Sinistre::getMontantAccorde).reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal soldeNet = totalEncaissements.subtract(totalRemboursements);
+
+        double ratioSP = totalEncaissements.compareTo(BigDecimal.ZERO) > 0
+            ? totalRemboursements.divide(totalEncaissements, 4, RoundingMode.HALF_UP).doubleValue() * 100 : 0;
+
+        long primesPendantes  = paiementPrimeRepository.findAll().stream()
+            .filter(p -> p.getStatut() == PaiementPrime.StatutPaiement.EN_ATTENTE).count();
+        long sinistresEnAttente = sinistreRepository.findAll().stream()
+            .filter(s -> s.getStatut() == Sinistre.SinistreStatut.EN_ATTENTE).count();
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("cashflow",            cashflow);
+        result.put("totalEncaissements",  totalEncaissements);
+        result.put("totalRemboursements", totalRemboursements);
+        result.put("soldeNet",            soldeNet);
+        result.put("ratioSP",             Math.round(ratioSP * 10.0) / 10.0);
+        result.put("primesPendantes",     primesPendantes);
+        result.put("sinistresEnAttente",  sinistresEnAttente);
 
         return ResponseEntity.ok(ApiResponse.success(result));
     }

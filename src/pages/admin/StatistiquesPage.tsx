@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { apiClient } from "@/services/apiClient";
 import {
@@ -71,10 +72,21 @@ function KpiCard({
 
 // ─── Page principale ─────────────────────────────────────────────────────────
 
+// Mapping label FR → statut API pour le drill-down
+const LABEL_TO_STATUT: Record<string, string> = {
+  "En attente": "EN_ATTENTE",
+  "En cours":   "EN_COURS",
+  "Approuvé":   "APPROUVE",
+  "Rejeté":     "REJETE",
+  "Payé":       "PAYE",
+};
+
 export default function StatistiquesPage() {
+  const navigate = useNavigate();
   const [data,    setData]    = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState(false);
+  const [drillInfo, setDrillInfo] = useState<{ name: string; value: number } | null>(null);
 
   const fetchData = useCallback(() => {
     setLoading(true);
@@ -148,7 +160,7 @@ export default function StatistiquesPage() {
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900 truncate">Tableau analytique</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Données en temps réel depuis la base de données</p>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Statistiques actualisées en temps réel</p>
           </div>
           <button
             onClick={fetchData}
@@ -186,8 +198,8 @@ export default function StatistiquesPage() {
           <KpiCard
             title="Consultations ce mois"
             value={String(t.consultationsThisMonth ?? 0)}
-            icon={<ClipboardList size={20} className="text-teal-600" />}
-            color="bg-teal-50"
+            icon={<ClipboardList size={20} className="text-blue-600" />}
+            color="bg-blue-50"
             trend={{ value: varCon, label: "vs mois dernier" }}
             delay={0.18}
           />
@@ -276,6 +288,7 @@ export default function StatistiquesPage() {
             </div>
             {sinStatut.length > 0 ? (
               <>
+                <p className="text-[10px] text-muted-foreground mb-2 italic">Cliquez sur un segment pour filtrer</p>
                 <div className="h-44 sm:h-48">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -285,6 +298,14 @@ export default function StatistiquesPage() {
                         innerRadius="38%" outerRadius="68%"
                         paddingAngle={3}
                         dataKey="value"
+                        cursor="pointer"
+                        onClick={(entry: any) => {
+                          const statut = LABEL_TO_STATUT[entry.name];
+                          if (statut) {
+                            setDrillInfo({ name: entry.name, value: entry.value });
+                            navigate(`/sinistres?statut=${statut}`);
+                          }
+                        }}
                       >
                         {sinStatut.map((_: any, i: number) => (
                           <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
@@ -299,14 +320,21 @@ export default function StatistiquesPage() {
                 </div>
                 <div className="space-y-1.5 mt-2">
                   {sinStatut.map((s: any, i: number) => (
-                    <div key={s.name} className="flex items-center justify-between text-xs">
+                    <button
+                      key={s.name}
+                      onClick={() => {
+                        const statut = LABEL_TO_STATUT[s.name];
+                        if (statut) navigate(`/sinistres?statut=${statut}`);
+                      }}
+                      className="w-full flex items-center justify-between text-xs hover:bg-muted/50 rounded px-1 py-0.5 transition-colors"
+                    >
                       <div className="flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full flex-shrink-0"
                               style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
                         <span className="text-gray-600">{s.name}</span>
                       </div>
                       <span className="font-semibold text-gray-900">{s.value}</span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </>
@@ -331,31 +359,42 @@ export default function StatistiquesPage() {
               <p className="text-xs text-muted-foreground mt-0.5">Classés par nombre de consultations</p>
             </div>
             {topPrest.length > 0 ? (
-              <div className="h-52 sm:h-60">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={topPrest}
-                    layout="vertical"
-                    margin={{ top: 0, right: 20, left: 0, bottom: 0 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
-                    <XAxis type="number" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <YAxis
-                      type="category"
-                      dataKey="nom"
-                      tick={{ fontSize: 11 }}
-                      axisLine={false}
-                      tickLine={false}
-                      width={100}
-                    />
-                    <Tooltip
-                      contentStyle={{ borderRadius: "8px", fontSize: "12px", border: "1px solid #e5e7eb" }}
-                      formatter={(v: number) => [`${v} consultation${v > 1 ? "s" : ""}`, ""]}
-                    />
-                    <Bar dataKey="consultations" fill="#6366F1" radius={[0, 4, 4, 0]} maxBarSize={28} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              <>
+                <p className="text-[10px] text-muted-foreground mb-2 italic">Cliquez pour voir les stats du prestataire</p>
+                <div className="h-52 sm:h-60">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={topPrest}
+                      layout="vertical"
+                      margin={{ top: 0, right: 20, left: 0, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+                      <XAxis type="number" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                      <YAxis
+                        type="category"
+                        dataKey="nom"
+                        tick={{ fontSize: 11, cursor: "pointer" }}
+                        axisLine={false}
+                        tickLine={false}
+                        width={100}
+                      />
+                      <Tooltip
+                        contentStyle={{ borderRadius: "8px", fontSize: "12px", border: "1px solid #e5e7eb" }}
+                        formatter={(v: number) => [`${v} consultation${v > 1 ? "s" : ""}`, ""]}
+                      />
+                      <Bar
+                        dataKey="consultations"
+                        fill="#6366F1"
+                        radius={[0, 4, 4, 0]}
+                        maxBarSize={28}
+                        cursor="pointer"
+                        onClick={(entry: any) => entry.id && navigate(`/admin/prestataires/${entry.id}/stats`)}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </>
+
             ) : (
               <div className="h-52 flex flex-col items-center justify-center gap-2 text-muted-foreground">
                 <Stethoscope size={32} className="opacity-30" />

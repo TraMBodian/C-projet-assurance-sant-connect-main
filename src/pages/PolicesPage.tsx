@@ -1,17 +1,20 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Search, Shield, FileText, Loader2, AlertCircle,
   Trash2, X, RefreshCw, XCircle, CheckCircle, Clock,
-  Download, MessageCircle,
+  Download, MessageCircle, Ban,
 } from "@/components/ui/Icons";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import AppLayout from "@/components/AppLayout";
 import { DataService } from "@/services/dataService";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
+import ConfirmDialog from "@/components/admin/ConfirmDialog";
 
 // ─── Statuts ──────────────────────────────────────────────────────────────────
 
@@ -148,6 +151,345 @@ function printAttestation(p: any) {
   setTimeout(() => { win.print(); win.close(); }, 400);
 }
 
+function exportCSV(data: any[]) {
+  const headers = ["N° Police", "Assuré", "Type", "Statut", "Couverture", "Prime", "Date début", "Date fin"];
+  const rows = data.map(p => [
+    p.numero ?? "",
+    p.assure ? `${p.assure.nom} ${p.assure.prenom}` : "",
+    p.type ?? "",
+    p.statut ?? "",
+    p.couverture ?? "",
+    p.montantPrime ?? "",
+    fmtDate(p.dateDebut || p.createdAt),
+    fmtDate(p.dateFin),
+  ]);
+  const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `polices-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── Modal Avenant ───────────────────────────────────────────────────────────
+
+const TYPES_AVENANT = [
+  { value: "MODIFICATION_COUVERTURE", label: "Modification de couverture"      },
+  { value: "AJOUT_BENEFICIAIRE",      label: "Ajout / retrait de bénéficiaire" },
+  { value: "MODIFICATION_ADRESSE",    label: "Modification d'adresse"           },
+  { value: "MODIFICATION_PRIME",      label: "Modification de prime"            },
+  { value: "PROLONGATION",            label: "Prolongation du contrat"          },
+  { value: "AUTRE",                   label: "Autre modification"               },
+];
+
+function ModalAvenant({
+  police, onClose, onSuccess,
+}: { police: any; onClose: () => void; onSuccess: () => void }) {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [form, setForm] = useState({
+    type: "MODIFICATION_COUVERTURE",
+    ancienneValeur: "",
+    nouvelleValeur: "",
+    description: "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!form.description && !form.nouvelleValeur) {
+      toast({ title: "Précision requise", description: "Décrivez la modification souhaitée.", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      await DataService.creerAvenantContrat({
+        policeId: police.id,
+        type: form.type,
+        assureNom: user?.full_name ?? "",
+        ancienneValeur: form.ancienneValeur,
+        nouvelleValeur: form.nouvelleValeur,
+        description: form.description,
+      });
+      toast({ title: "Avenant soumis", description: "Votre demande de modification a été enregistrée." });
+      onSuccess();
+    } catch {
+      toast({ title: "Erreur", description: "Impossible d'envoyer l'avenant.", variant: "destructive" });
+    } finally { setSaving(false); }
+  };
+
+  const needsValues = ["MODIFICATION_COUVERTURE", "MODIFICATION_PRIME", "PROLONGATION"].includes(form.type);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <AnimatePresence>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto"
+        >
+          <div className="flex items-center justify-between p-5 border-b sticky top-0 bg-white">
+            <div className="flex items-center gap-2">
+              <FileText size={18} className="text-purple-600" />
+              <h2 className="font-semibold text-lg">Demander un avenant</h2>
+            </div>
+            <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X size={18} /></button>
+          </div>
+
+          <div className="p-5 space-y-4">
+            <div className="rounded-lg bg-purple-50 border border-purple-200 px-4 py-3 text-sm text-purple-800">
+              Police concernée : <span className="font-mono font-semibold">{police.numero}</span>
+            </div>
+
+            <div>
+              <Label className="mb-1.5 block">Type de modification <span className="text-red-500">*</span></Label>
+              <select
+                value={form.type}
+                onChange={e => setForm({ ...form, type: e.target.value, ancienneValeur: "", nouvelleValeur: "" })}
+                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                {TYPES_AVENANT.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </div>
+
+            {needsValues && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="mb-1.5 block text-xs">Valeur actuelle</Label>
+                  <Input
+                    value={form.ancienneValeur}
+                    onChange={e => setForm({ ...form, ancienneValeur: e.target.value })}
+                    placeholder={form.type === "MODIFICATION_PRIME" ? "Ex : 45000" : "Actuelle"}
+                  />
+                </div>
+                <div>
+                  <Label className="mb-1.5 block text-xs">Nouvelle valeur <span className="text-red-500">*</span></Label>
+                  <Input
+                    value={form.nouvelleValeur}
+                    onChange={e => setForm({ ...form, nouvelleValeur: e.target.value })}
+                    placeholder={
+                      form.type === "MODIFICATION_PRIME" ? "Ex : 55000" :
+                      form.type === "PROLONGATION" ? "2026-12-31" : "Nouvelle"
+                    }
+                  />
+                </div>
+              </div>
+            )}
+
+            <div>
+              <Label className="mb-1.5 block">Description de la modification <span className="text-red-500">*</span></Label>
+              <textarea
+                value={form.description}
+                onChange={e => setForm({ ...form, description: e.target.value })}
+                rows={4}
+                placeholder="Décrivez en détail la modification souhaitée..."
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 p-5 border-t">
+            <Button variant="outline" onClick={onClose} disabled={saving}>Annuler</Button>
+            <Button onClick={handleSubmit} disabled={saving} className="gap-2 bg-purple-600 hover:bg-purple-700">
+              {saving && <Loader2 size={14} className="animate-spin" />}
+              Soumettre l'avenant
+            </Button>
+          </div>
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ─── Modal Renouvellement ─────────────────────────────────────────────────────
+
+function ModalRenouvellement({
+  police, onClose, onSuccess,
+}: { police: any; onClose: () => void; onSuccess: () => void }) {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [form, setForm] = useState({ dateDebut: "", dureeAns: "1", notes: "" });
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!form.dateDebut) { toast({ title: "Date requise", description: "Veuillez indiquer la date de début souhaitée.", variant: "destructive" }); return; }
+    setSaving(true);
+    try {
+      await DataService.creerDemandeContrat({
+        policeId: police.id,
+        type: "RENOUVELLEMENT",
+        assureNom: user?.full_name ?? "",
+        dateDebutSouhaitee: form.dateDebut,
+        dureeAns: parseInt(form.dureeAns),
+        notes: form.notes,
+      });
+      toast({ title: "Demande envoyée", description: "Votre gestionnaire traitera votre demande de renouvellement." });
+      onSuccess();
+    } catch {
+      toast({ title: "Erreur", description: "Impossible d'envoyer la demande.", variant: "destructive" });
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <AnimatePresence>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className="bg-white rounded-xl shadow-xl w-full max-w-md"
+        >
+          <div className="flex items-center justify-between p-5 border-b">
+            <div className="flex items-center gap-2">
+              <RefreshCw size={18} className="text-blue-600" />
+              <h2 className="font-semibold text-lg">Demande de renouvellement</h2>
+            </div>
+            <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X size={18} /></button>
+          </div>
+
+          <div className="p-5 space-y-4">
+            <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-800">
+              Police concernée : <span className="font-mono font-semibold">{police.numero}</span>
+            </div>
+
+            <div>
+              <Label className="mb-1.5 block">Date de début souhaitée <span className="text-red-500">*</span></Label>
+              <Input type="date" value={form.dateDebut} onChange={e => setForm({ ...form, dateDebut: e.target.value })} />
+            </div>
+
+            <div>
+              <Label className="mb-1.5 block">Durée souhaitée</Label>
+              <select
+                value={form.dureeAns}
+                onChange={e => setForm({ ...form, dureeAns: e.target.value })}
+                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="1">1 an</option>
+                <option value="2">2 ans</option>
+                <option value="3">3 ans</option>
+              </select>
+            </div>
+
+            <div>
+              <Label className="mb-1.5 block">Commentaires (facultatif)</Label>
+              <textarea
+                value={form.notes}
+                onChange={e => setForm({ ...form, notes: e.target.value })}
+                rows={3}
+                placeholder="Informations complémentaires..."
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 p-5 border-t">
+            <Button variant="outline" onClick={onClose} disabled={saving}>Annuler</Button>
+            <Button onClick={handleSubmit} disabled={saving} className="gap-2">
+              {saving && <Loader2 size={14} className="animate-spin" />}
+              Envoyer la demande
+            </Button>
+          </div>
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ─── Modal Résiliation ────────────────────────────────────────────────────────
+
+const MOTIFS_RESILIATION = [
+  "Déménagement hors zone de couverture",
+  "Difficultés financières",
+  "Souscription d'un autre contrat",
+  "Changement de situation familiale",
+  "Insatisfaction du service",
+  "Autre",
+];
+
+function ModalResiliation({
+  police, onClose, onSuccess,
+}: { police: any; onClose: () => void; onSuccess: () => void }) {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [form, setForm] = useState({ motif: MOTIFS_RESILIATION[0], notes: "" });
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async () => {
+    setSaving(true);
+    try {
+      await DataService.creerDemandeContrat({
+        policeId: police.id,
+        type: "RESILIATION",
+        assureNom: user?.full_name ?? "",
+        motif: form.motif,
+        notes: form.notes,
+      });
+      toast({ title: "Demande envoyée", description: "Votre gestionnaire traitera votre demande de résiliation." });
+      onSuccess();
+    } catch {
+      toast({ title: "Erreur", description: "Impossible d'envoyer la demande.", variant: "destructive" });
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <AnimatePresence>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className="bg-white rounded-xl shadow-xl w-full max-w-md"
+        >
+          <div className="flex items-center justify-between p-5 border-b">
+            <div className="flex items-center gap-2">
+              <Ban size={18} className="text-red-600" />
+              <h2 className="font-semibold text-lg">Demande de résiliation</h2>
+            </div>
+            <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X size={18} /></button>
+          </div>
+
+          <div className="p-5 space-y-4">
+            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
+              <p className="font-semibold mb-1">Attention</p>
+              <p>La résiliation mettra fin à votre couverture. Police : <span className="font-mono font-semibold">{police.numero}</span></p>
+            </div>
+
+            <div>
+              <Label className="mb-1.5 block">Motif de résiliation <span className="text-red-500">*</span></Label>
+              <select
+                value={form.motif}
+                onChange={e => setForm({ ...form, motif: e.target.value })}
+                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                {MOTIFS_RESILIATION.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <Label className="mb-1.5 block">Précisions (facultatif)</Label>
+              <textarea
+                value={form.notes}
+                onChange={e => setForm({ ...form, notes: e.target.value })}
+                rows={3}
+                placeholder="Informations supplémentaires..."
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 p-5 border-t">
+            <Button variant="outline" onClick={onClose} disabled={saving}>Annuler</Button>
+            <Button variant="destructive" onClick={handleSubmit} disabled={saving} className="gap-2">
+              {saving && <Loader2 size={14} className="animate-spin" />}
+              Confirmer la demande
+            </Button>
+          </div>
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // ─── Composant ────────────────────────────────────────────────────────────────
 
 export default function PolicesPage() {
@@ -162,22 +504,26 @@ export default function PolicesPage() {
   const [search, setSearch]           = useState("");
   const [filter, setFilter]           = useState<FilterKey>("all");
   const [actioningId, setActioningId] = useState<string | null>(null);
+  const [modalRenouvellement, setModalRenouvellement] = useState<any | null>(null);
+  const [modalResiliation, setModalResiliation]       = useState<any | null>(null);
+  const [modalAvenant, setModalAvenant]               = useState<any | null>(null);
+  const [confirmDelete, setConfirmDelete]             = useState<any | null>(null);
 
   const load = () => {
     setLoading(true); setError(false);
-    DataService.getPolices()
+    DataService.getPolices(user)
       .then((list) => setPolices(list ?? []))
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   };
-  useEffect(load, []);
+  useEffect(load, [user]);
 
   // ─── Actions admin ────────────────────────────────────────────────────────
 
   const updateStatus = async (p: any, newStatus: string, msg: string) => {
     setActioningId(String(p.id));
     try {
-      await DataService.updatePolice(String(p.id), { ...p, statut: newStatus });
+      await DataService.updatePolice(String(p.id), { statut: newStatus });
       setPolices((prev) => prev.map((x) => String(x.id) === String(p.id) ? { ...x, statut: newStatus } : x));
       toast({ title: msg, description: `Police ${p.numero} mise à jour.` });
     } catch {
@@ -185,8 +531,12 @@ export default function PolicesPage() {
     } finally { setActioningId(null); }
   };
 
-  const handleDelete = async (p: any) => {
-    if (!window.confirm(`Supprimer la police "${p.numero}" ?`)) return;
+  const handleDelete = (p: any) => setConfirmDelete(p);
+
+  const doDelete = async () => {
+    const p = confirmDelete;
+    setConfirmDelete(null);
+    if (!p) return;
     setActioningId(String(p.id));
     try {
       await DataService.deletePolice(String(p.id));
@@ -219,7 +569,30 @@ export default function PolicesPage() {
 
   return (
     <AppLayout title={pageTitle}>
-      <div className="space-y-4 sm:space-y-5">
+      {/* ── Modals ──────────────────────────────────────────────────────────── */}
+      {modalRenouvellement && (
+        <ModalRenouvellement
+          police={modalRenouvellement}
+          onClose={() => setModalRenouvellement(null)}
+          onSuccess={() => { setModalRenouvellement(null); }}
+        />
+      )}
+      {modalResiliation && (
+        <ModalResiliation
+          police={modalResiliation}
+          onClose={() => setModalResiliation(null)}
+          onSuccess={() => { setModalResiliation(null); }}
+        />
+      )}
+      {modalAvenant && (
+        <ModalAvenant
+          police={modalAvenant}
+          onClose={() => setModalAvenant(null)}
+          onSuccess={() => { setModalAvenant(null); }}
+        />
+      )}
+
+      <div className="space-y-4 sm:space-y-5 px-4 sm:px-6">
 
         {/* ── Stats ──────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
@@ -250,6 +623,14 @@ export default function PolicesPage() {
             </div>
           </div>
 
+          <button
+            onClick={() => exportCSV(filtered)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-input bg-background hover:bg-muted text-sm font-medium transition-colors whitespace-nowrap shrink-0"
+            title="Exporter la liste filtrée en CSV"
+          >
+            <Download size={14} />
+            <span className="hidden sm:inline">CSV</span>
+          </button>
           {isClient ? (
             /* Client : redirection vers contact/agent */
             <button
@@ -278,10 +659,10 @@ export default function PolicesPage() {
             <button
               key={key}
               onClick={() => setFilter(key)}
-              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${
+              className={`px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${
                 filter === key
-                  ? "bg-brand text-white"
-                  : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
+                  ? "bg-[#1B5299] text-white shadow-sm"
+                  : "bg-white border border-gray-200 text-gray-600 hover:border-[#1B5299] hover:text-[#1B5299]"
               }`}
             >
               {FILTER_LABELS[key]}
@@ -303,11 +684,12 @@ export default function PolicesPage() {
           <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm text-blue-800">
             <Shield size={15} className="mt-0.5 shrink-0 text-blue-600" />
             <p>
-              Pour modifier vos informations personnelles, rendez-vous dans{" "}
-              <button onClick={() => navigate("/profile")} className="font-semibold underline underline-offset-2">
-                Mon Profil
+              Utilisez les boutons <span className="font-semibold">Renouveler</span> ou <span className="font-semibold">Résilier</span> pour soumettre une demande.
+              Suivez l'avancement dans{" "}
+              <button onClick={() => navigate("/demandes-contrat")} className="font-semibold underline underline-offset-2">
+                Mes Demandes
               </button>
-              . Pour renouveler ou modifier une police, contactez votre agent.
+              .
             </p>
           </div>
         )}
@@ -399,7 +781,7 @@ export default function PolicesPage() {
                         </td>
                         <td className="py-3 px-4 text-right">
                           {isClient ? (
-                            /* Actions client : lecture seule */
+                            /* Actions client */
                             <div className="flex items-center justify-end gap-1">
                               <Button
                                 size="sm" variant="outline"
@@ -410,17 +792,45 @@ export default function PolicesPage() {
                                 <Download className="w-3 h-3" />
                                 Attestation
                               </Button>
+                              <Button
+                                size="sm" variant="outline"
+                                className="h-8 text-xs gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50"
+                                title="Voir l'historique des paiements de prime"
+                                onClick={() => navigate("/paiements-primes")}
+                              >
+                                Paiements
+                              </Button>
                               {statut === "ACTIVE" && (
                                 <Button
                                   size="sm" variant="outline"
-                                  className="h-8 text-xs gap-1.5 text-brand border-brand/30 hover:bg-brand/5"
+                                  className="h-8 text-xs gap-1.5 text-green-700 border-green-300 hover:bg-green-50"
                                   title="Demander le renouvellement de cette police"
-                                  onClick={() => navigate("/contact")}
+                                  onClick={() => setModalRenouvellement(p)}
                                 >
                                   <RefreshCw className="w-3 h-3" />
                                   Renouveler
                                 </Button>
                               )}
+                              {statut !== "RESILIEE" && (
+                                <Button
+                                  size="sm" variant="outline"
+                                  className="h-8 text-xs gap-1.5 text-red-600 border-red-200 hover:bg-red-50"
+                                  title="Demander la résiliation de cette police"
+                                  onClick={() => setModalResiliation(p)}
+                                >
+                                  <Ban className="w-3 h-3" />
+                                  Résilier
+                                </Button>
+                              )}
+                              <Button
+                                size="sm" variant="outline"
+                                className="h-8 text-xs gap-1.5 text-purple-700 border-purple-200 hover:bg-purple-50"
+                                title="Demander un avenant (modification du contrat)"
+                                onClick={() => setModalAvenant(p)}
+                              >
+                                <FileText className="w-3 h-3" />
+                                Avenant
+                              </Button>
                             </div>
                           ) : (
                             /* Actions admin */
@@ -545,13 +955,31 @@ export default function PolicesPage() {
                             {statut === "ACTIVE" && (
                               <Button
                                 size="sm" variant="outline"
-                                className="h-8 text-xs gap-1 text-blue-600 border-blue-200"
-                                onClick={() => navigate("/contact")}
+                                className="h-8 text-xs gap-1 text-green-700 border-green-300"
+                                onClick={() => setModalRenouvellement(p)}
                               >
                                 <RefreshCw className="w-3 h-3" />
                                 Renouveler
                               </Button>
                             )}
+                            {statut !== "RESILIEE" && (
+                              <Button
+                                size="sm" variant="outline"
+                                className="h-8 text-xs gap-1 text-red-600 border-red-200"
+                                onClick={() => setModalResiliation(p)}
+                              >
+                                <Ban className="w-3 h-3" />
+                                Résilier
+                              </Button>
+                            )}
+                            <Button
+                              size="sm" variant="outline"
+                              className="h-8 text-xs gap-1 text-purple-700 border-purple-200"
+                              onClick={() => setModalAvenant(p)}
+                            >
+                              <FileText className="w-3 h-3" />
+                              Avenant
+                            </Button>
                           </>
                         ) : (
                           <>
@@ -592,6 +1020,16 @@ export default function PolicesPage() {
           </>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        title="Supprimer la police"
+        description={`Supprimer définitivement la police "${confirmDelete?.numero}" ? Cette action est irréversible.`}
+        confirmLabel="Supprimer"
+        destructive
+        onConfirm={doDelete}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </AppLayout>
   );
 }

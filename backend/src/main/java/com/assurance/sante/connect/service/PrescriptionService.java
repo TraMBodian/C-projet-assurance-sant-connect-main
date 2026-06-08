@@ -5,6 +5,7 @@ import com.assurance.sante.connect.repository.PrescriptionRepository;
 import com.assurance.sante.connect.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 @Service
@@ -13,10 +14,12 @@ public class PrescriptionService {
 
     private final PrescriptionRepository prescriptionRepository;
 
+    @Transactional(readOnly = true)
     public List<Prescription> getAllPrescriptions() {
         return prescriptionRepository.findAll();
     }
 
+    @Transactional(readOnly = true)
     public Prescription getPrescriptionById(Long id) {
         return prescriptionRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Prescription not found with id: " + id));

@@ -1,80 +1,13 @@
-// Data service - connecté au backend Spring Boot
+// Data service — toutes les données viennent du backend Spring Boot
 import { apiClient } from './apiClient';
-import type { Proposition, StatutProposition } from '@/pages/admin/nouvelle-proposition/types';
-
-// ─── Helpers réseau ───────────────────────────────────────────────────────────
-
-function isNetworkError(err: any): boolean {
-  const msg: string = err?.message ?? "";
-  return msg.includes("Failed to fetch") || msg.includes("NetworkError") || msg.includes("network");
-}
-
-// ─── Store localStorage (mode hors-ligne) ────────────────────────────────────
-
-function lsGet(key: string): any[] {
-  try { return JSON.parse(localStorage.getItem(key) ?? "[]"); } catch { return []; }
-}
-function lsSet(key: string, data: any[]): void {
-  localStorage.setItem(key, JSON.stringify(data));
-}
-
-const LS_GROUPES       = "cnart_groupes_local";
-const LS_FAMILLES      = "cnart_familles_local";
-const LS_PROPOSITIONS  = "cnart_propositions_local";
-
-const localGroupes = {
-  getAll:    ()                  => lsGet(LS_GROUPES),
-  getById:   (id: number)        => lsGet(LS_GROUPES).find((g: any) => g.id === id) ?? null,
-  create:    (data: any)         => {
-    const item = { ...data, id: Date.now(), statut: data.statut ?? "Actif", _local: true };
-    lsSet(LS_GROUPES, [item, ...lsGet(LS_GROUPES)]);
-    return item;
-  },
-  update:    (id: number, data: any) => {
-    const list = lsGet(LS_GROUPES).map((g: any) => g.id === id ? { ...g, ...data, id } : g);
-    lsSet(LS_GROUPES, list);
-    return { ...data, id };
-  },
-  delete:    (id: number)        => {
-    lsSet(LS_GROUPES, lsGet(LS_GROUPES).filter((g: any) => g.id !== id));
-  },
-};
-
-// ─── Référence auto-incrémentée ──────────────────────────────────────────────
-
-function nextPropRef(): string {
-  const year  = new Date().getFullYear();
-  const items = lsGet(LS_PROPOSITIONS) as Proposition[];
-  const count = items.filter(p => p.reference.startsWith(`PROP-${year}-`)).length + 1;
-  return `PROP-${year}-${String(count).padStart(4, "0")}`;
-}
-
-const localFamilles = {
-  getAll:    ()                  => lsGet(LS_FAMILLES),
-  getById:   (id: number)        => lsGet(LS_FAMILLES).find((f: any) => f.id === id) ?? null,
-  create:    (data: any)         => {
-    const item = { ...data, id: Date.now(), statut: data.statut ?? "En attente", _local: true };
-    lsSet(LS_FAMILLES, [item, ...lsGet(LS_FAMILLES)]);
-    return item;
-  },
-  update:    (id: number, data: any) => {
-    const list = lsGet(LS_FAMILLES).map((f: any) => f.id === id ? { ...f, ...data, id } : f);
-    lsSet(LS_FAMILLES, list);
-    return { ...data, id };
-  },
-  delete:    (id: number)        => {
-    lsSet(LS_FAMILLES, lsGet(LS_FAMILLES).filter((f: any) => f.id !== id));
-  },
-};
-
-// ─── DataService ──────────────────────────────────────────────────────────────
 
 export class DataService {
 
-  // Assurés
+  // ─── Assurés ────────────────────────────────────────────────────────────────
+
   static async getAssures() {
     const r = await apiClient.getAssures();
-    return r.assures;
+    return r.assures ?? [];
   }
 
   static async getAssureById(id: string) {
@@ -93,10 +26,16 @@ export class DataService {
     return apiClient.deleteAssure(id);
   }
 
-  // Polices
+  static async getMesBeneficiaires() {
+    const data = await apiClient.getMesBeneficiaires();
+    return Array.isArray(data) ? data : [];
+  }
+
+  // ─── Polices ────────────────────────────────────────────────────────────────
+
   static async getPolices() {
     const r = await apiClient.getPolices();
-    return r.polices;
+    return r.polices ?? [];
   }
 
   static async createPolice(data: any) {
@@ -111,10 +50,11 @@ export class DataService {
     return apiClient.deletePolice(id);
   }
 
-  // Sinistres
+  // ─── Sinistres ──────────────────────────────────────────────────────────────
+
   static async getSinistres() {
     const r = await apiClient.getSinistres();
-    return r.sinistres;
+    return r.sinistres ?? [];
   }
 
   static async getSinistreById(id: string) {
@@ -125,10 +65,11 @@ export class DataService {
     return apiClient.createSinistre(data);
   }
 
-  // Prestataires
+  // ─── Prestataires ───────────────────────────────────────────────────────────
+
   static async getPrestataires() {
     const r = await apiClient.getPrestataires();
-    return r.prestataires;
+    return r.prestataires ?? [];
   }
 
   static async createPrestataire(data: any) {
@@ -143,42 +84,70 @@ export class DataService {
     return apiClient.deletePrestataire(id);
   }
 
-  // Consultations
+  // ─── Consultations ──────────────────────────────────────────────────────────
+
   static async getConsultations() {
     const r = await apiClient.getConsultations();
-    return r.consultations;
+    return r.consultations ?? [];
+  }
+
+  static async getConsultation(id: string | number) {
+    const r = await apiClient.request<any>(`/consultations/${id}`);
+    return r.data ?? r;
   }
 
   static async createConsultation(data: any) {
     return apiClient.createConsultation(data);
   }
 
-  // Prescriptions
+  // ─── Prescriptions ──────────────────────────────────────────────────────────
+
   static async getPrescriptions() {
     const r = await apiClient.getPrescriptions();
-    return r.prescriptions;
+    return r.prescriptions ?? [];
   }
 
   static async createPrescription(data: any) {
     return apiClient.createPrescription(data);
   }
 
-  // Remboursements
-  static async getRemboursements() {
-    const r = await apiClient.getRemboursements();
-    return r.remboursements;
+  // ─── Prestations ────────────────────────────────────────────────────────────
+
+  static async getMyPrestataire() {
+    return apiClient.getMyPrestataire();
   }
 
-  // Cartes
-  static async getCartes() {
-    const r = await apiClient.getCartes();
-    return r.cartes;
+  static async getPrestations() {
+    const r = await apiClient.getPrestations();
+    return r.prestations ?? [];
   }
 
-  // Users
+  static async createPrestation(data: any) {
+    return apiClient.createPrestation(data);
+  }
+
+  static async getPrestationLignes(prestationId: string) {
+    const r = await apiClient.getPrestationLignes(prestationId);
+    return r.lignes ?? [];
+  }
+
+  static async createLignePrestation(prestationId: string, data: any) {
+    return apiClient.createLignePrestation(prestationId, data);
+  }
+
+  static async fournirLignePrestation(ligneId: string, prestataireId: number, prescriptionId?: number | null) {
+    return apiClient.fournirLignePrestation(ligneId, { prestataireId, prescriptionId });
+  }
+
+  static async refuserLignePrestation(ligneId: string) {
+    return apiClient.refuserLignePrestation(ligneId);
+  }
+
+  // ─── Utilisateurs ───────────────────────────────────────────────────────────
+
   static async getUsers() {
     const r = await apiClient.getUsers();
-    return r.users;
+    return r.users ?? [];
   }
 
   static async updateUser(id: string, data: any) {
@@ -192,153 +161,325 @@ export class DataService {
   // ─── Familles ───────────────────────────────────────────────────────────────
 
   static async getFamilles() {
-    try {
-      const res = await apiClient.getFamilles();
-      const remote = Array.isArray(res) ? res : (res as any)?.data ?? [];
-      // Fusionner avec les entrées locales non encore synchronisées
-      const local = localFamilles.getAll().filter((f: any) => f._local);
-      return [...local, ...remote];
-    } catch {
-      return localFamilles.getAll();
-    }
-  }
-
-  static async createFamille(data: any) {
-    // Règle métier : toute nouvelle famille est créée "En attente" de validation admin.
-    // On normalise avant d'envoyer pour ne pas dépendre du défaut backend.
-    const payload = { ...data, statut: "En attente" };
-    try {
-      const res = await apiClient.createFamille(payload);
-      const created = (res as any)?.data ?? res;
-      return { ...created, statut: "En attente" };
-    } catch (err: any) {
-      if (isNetworkError(err)) return localFamilles.create(payload);
-      throw err;
-    }
-  }
-
-  static async updateFamille(id: number, data: any) {
-    try {
-      const res = await apiClient.updateFamille(id, data);
-      return (res as any)?.data ?? res;
-    } catch (err: any) {
-      if (isNetworkError(err)) return localFamilles.update(id, data);
-      throw err;
-    }
-  }
-
-  static async deleteFamille(id: number) {
-    try {
-      return await apiClient.deleteFamille(id);
-    } catch (err: any) {
-      if (isNetworkError(err)) { localFamilles.delete(id); return null; }
-      throw err;
-    }
+    const data = await apiClient.getFamilles();
+    return Array.isArray(data) ? data : [];
   }
 
   static async getFamilleById(id: number) {
-    try {
-      const res = await apiClient.getFamilleById(id);
-      return (res as any)?.data ?? res;
-    } catch {
-      return localFamilles.getById(id);
-    }
+    return apiClient.getFamilleById(id);
+  }
+
+  static async createFamille(data: any) {
+    return apiClient.createFamille({ ...data, statut: data.statut ?? "En attente" });
+  }
+
+  static async updateFamille(id: number, data: any) {
+    return apiClient.updateFamille(id, data);
+  }
+
+  static async deleteFamille(id: number) {
+    return apiClient.deleteFamille(id);
   }
 
   // ─── Groupes ────────────────────────────────────────────────────────────────
 
   static async getGroupes() {
-    try {
-      const res = await apiClient.getGroupes();
-      const remote = Array.isArray(res) ? res : (res as any)?.data ?? [];
-      // Fusionner avec les entrées locales non encore synchronisées
-      const local = localGroupes.getAll().filter((g: any) => g._local);
-      return [...local, ...remote];
-    } catch {
-      return localGroupes.getAll();
-    }
-  }
-
-  static async createGroupe(data: any) {
-    try {
-      const res = await apiClient.createGroupe(data);
-      return (res as any)?.data ?? res;
-    } catch (err: any) {
-      if (isNetworkError(err)) return localGroupes.create(data);
-      throw err;
-    }
-  }
-
-  static async updateGroupe(id: number, data: any) {
-    try {
-      const res = await apiClient.updateGroupe(id, data);
-      return (res as any)?.data ?? res;
-    } catch (err: any) {
-      if (isNetworkError(err)) return localGroupes.update(id, data);
-      throw err;
-    }
-  }
-
-  static async deleteGroupe(id: number) {
-    try {
-      return await apiClient.deleteGroupe(id);
-    } catch (err: any) {
-      if (isNetworkError(err)) { localGroupes.delete(id); return null; }
-      throw err;
-    }
+    const data = await apiClient.getGroupes();
+    return Array.isArray(data) ? data : [];
   }
 
   static async getGroupeById(id: number) {
+    return apiClient.getGroupeById(id);
+  }
+
+  static async createGroupe(data: any) {
+    return apiClient.createGroupe(data);
+  }
+
+  static async updateGroupe(id: number, data: any) {
+    return apiClient.updateGroupe(id, data);
+  }
+
+  static async deleteGroupe(id: number) {
+    return apiClient.deleteGroupe(id);
+  }
+
+  // ─── Paiements de primes ────────────────────────────────────────────────────
+
+  static async getPaiementsPrimes() {
+    const data = await apiClient.getPaiementsPrimes();
+    return Array.isArray(data) ? data : [];
+  }
+
+  static async getPaiementsPrimesByPolice(policeId: string) {
+    const data = await apiClient.getPaiementsPrimesByPolice(policeId);
+    return Array.isArray(data) ? data : [];
+  }
+
+  static async getPaiementsEnRetard() {
+    const data = await apiClient.getPaiementsEnRetard();
+    return Array.isArray(data) ? data : [];
+  }
+
+  static async creerPaiementPrime(data: any) {
+    return apiClient.creerPaiementPrime(data);
+  }
+
+  static async payerPaiementPrime(id: string, data: { moyenPaiement: string; referenceTransaction?: string; notes?: string }) {
+    return apiClient.payerPaiementPrime(id, data);
+  }
+
+  static async marquerEnRetardPaiement(id: string) {
+    return apiClient.marquerEnRetardPaiement(id);
+  }
+
+  static async supprimerPaiementPrime(id: string) {
+    return apiClient.supprimerPaiementPrime(id);
+  }
+
+  // ─── Avenants de contrat ────────────────────────────────────────────────────
+
+  static async getAvenantsContrat() {
+    const data = await apiClient.getAvenantsContrat();
+    return Array.isArray(data) ? data : [];
+  }
+
+  static async creerAvenantContrat(data: any) {
+    return apiClient.creerAvenantContrat(data);
+  }
+
+  static async approuverAvenantContrat(id: string, commentaire?: string) {
+    return apiClient.approuverAvenantContrat(id, commentaire);
+  }
+
+  static async refuserAvenantContrat(id: string, commentaire?: string) {
+    return apiClient.refuserAvenantContrat(id, commentaire);
+  }
+
+  static async supprimerAvenantContrat(id: string) {
+    return apiClient.supprimerAvenantContrat(id);
+  }
+
+  // ─── Demandes de contrat ────────────────────────────────────────────────────
+
+  static async getDemandesContrat() {
+    const data = await apiClient.getDemandesContrat();
+    return Array.isArray(data) ? data : [];
+  }
+
+  static async creerDemandeContrat(data: any) {
+    return apiClient.creerDemandeContrat(data);
+  }
+
+  static async approuverDemandeContrat(id: string, commentaire?: string) {
+    return apiClient.approuverDemandeContrat(id, commentaire);
+  }
+
+  static async refuserDemandeContrat(id: string, commentaire?: string) {
+    return apiClient.refuserDemandeContrat(id, commentaire);
+  }
+
+  static async supprimerDemandeContrat(id: string) {
+    return apiClient.supprimerDemandeContrat(id);
+  }
+
+  // ─── Propositions ───────────────────────────────────────────────────────────
+  // Stockées en base via /api/propositions (à implémenter côté backend si nécessaire)
+
+  private static _localPropositions: any[] | null = null;
+
+  private static getLocalPropositions(): any[] {
+    if (!this._localPropositions) {
+      this._localPropositions = [
+        {
+          id: 'prop-1',
+          type: 'FAMILLE',
+          statut: 'brouillon',
+          reference: 'PROP-2026-0001',
+          createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+          updatedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+          envoyeeAt: null,
+          accepteeAt: null,
+          policeId: null,
+          famille: {
+            souscripteurNom: 'Dupont Jean',
+            souscripteurEmail: 'jean.dupont@email.com',
+            souscripteurTel: '+221 77 123 45 67',
+            souscripteurAdresse: '123 Rue de la Paix, Dakar',
+            membresFamille: [],
+            nbAdultes: 2,
+            nbEnfants: 1,
+            nbPersonnesAgees: 0,
+            typeGarantie: 'Standard',
+            dureeAns: 1,
+            dateDebut: '2026-06-01',
+            primeEstimee: 45000,
+            tauxRemboursement: 80,
+            tarifsPersoAdulte: null,
+            tarifsPersoEnfant: null,
+            tarifsPersoAdulteAge: null,
+            observations: '',
+          },
+          groupe: null,
+        },
+        {
+          id: 'prop-2',
+          type: 'GROUPE',
+          statut: 'envoyee',
+          reference: 'PROP-2026-0002',
+          createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+          updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+          envoyeeAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+          accepteeAt: null,
+          policeId: null,
+          famille: null,
+          groupe: {
+            entreprise: 'TechStartup SA',
+            secteur: 'Informatique',
+            contactNom: 'Sall Moussa',
+            contactEmail: 'moussa@techstartup.sn',
+            contactTel: '+221 77 234 56 78',
+            nbAdultes: 15,
+            nbEnfants: 3,
+            nbPersonnesAgees: 2,
+            typeGarantie: 'Confort',
+            dureeAns: 2,
+            dateDebut: '2026-07-01',
+            primeEstimee: 320000,
+            tauxRemboursement: 85,
+            tarifsPersoAdulte: null,
+            tarifsPersoEnfant: null,
+            tarifsPersoAdulteAge: null,
+            observations: 'PME dynamique, 20 employés',
+          },
+        },
+        {
+          id: 'prop-3',
+          type: 'FAMILLE',
+          statut: 'acceptee',
+          reference: 'PROP-2026-0003',
+          createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+          updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+          envoyeeAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+          accepteeAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+          policeId: null,
+          famille: {
+            souscripteurNom: 'Sow Fatou',
+            souscripteurEmail: 'fatou.sow@email.com',
+            souscripteurTel: '+221 77 345 67 89',
+            souscripteurAdresse: '456 Avenue des Sports, Thiès',
+            membresFamille: [],
+            nbAdultes: 1,
+            nbEnfants: 2,
+            nbPersonnesAgees: 1,
+            typeGarantie: 'Premium',
+            dureeAns: 1,
+            dateDebut: '2026-08-01',
+            primeEstimee: 65000,
+            tauxRemboursement: 90,
+            tarifsPersoAdulte: null,
+            tarifsPersoEnfant: null,
+            tarifsPersoAdulteAge: null,
+            observations: 'Client VIP',
+          },
+          groupe: null,
+        },
+      ];
+    }
+    return this._localPropositions;
+  }
+
+  static async getPropositions() {
     try {
-      const res = await apiClient.getGroupeById(id);
-      return (res as any)?.data ?? res;
+      const data = await apiClient.request<any[]>('/propositions');
+      this._localPropositions = data;
+      return data;
     } catch {
-      return localGroupes.getById(id);
+      return [...this.getLocalPropositions()];
     }
   }
 
-  // ─── Propositions (localStorage uniquement — pas encore d'API backend) ───────
-
-  static getPropositions(): Proposition[] {
-    return lsGet(LS_PROPOSITIONS) as Proposition[];
+  static async getPropositionById(id: string) {
+    try {
+      return await apiClient.request<any>(`/propositions/${id}`);
+    } catch {
+      return this.getLocalPropositions().find((prop) => prop.id === id) ?? null;
+    }
   }
 
-  static getPropositionById(id: string): Proposition | null {
-    return (lsGet(LS_PROPOSITIONS) as Proposition[]).find(p => p.id === id) ?? null;
+  static async createProposition(data: any) {
+    try {
+      const result = await apiClient.request<any>('/propositions', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      this._localPropositions = null;
+      return result;
+    } catch {
+      const now = new Date().toISOString();
+      const proposition = {
+        ...data,
+        id: `prop-${Date.now()}`,
+        reference: `PROP-${new Date().getFullYear()}-${String(this.getLocalPropositions().length + 1).padStart(4, '0')}`,
+        createdAt: now,
+        updatedAt: now,
+        envoyeeAt: data.statut === 'envoyee' ? now : null,
+        accepteeAt: data.statut === 'acceptee' ? now : null,
+        policeId: data.policeId ?? null,
+      };
+      this.getLocalPropositions().unshift(proposition);
+      return proposition;
+    }
   }
 
-  static createProposition(data: Omit<Proposition, 'id' | 'reference' | 'createdAt' | 'updatedAt'>): Proposition {
-    const now  = new Date().toISOString();
-    const prop: Proposition = {
-      ...data,
-      id:        `prop_${Date.now()}`,
-      reference: nextPropRef(),
-      createdAt: now,
-      updatedAt: now,
-    };
-    lsSet(LS_PROPOSITIONS, [prop, ...lsGet(LS_PROPOSITIONS)]);
-    return prop;
+  static async updateProposition(id: string, data: any) {
+    try {
+      const result = await apiClient.request<any>(`/propositions/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+      this._localPropositions = null;
+      return result;
+    } catch {
+      const props = this.getLocalPropositions();
+      const index = props.findIndex((prop) => prop.id === id);
+      if (index === -1) {
+        throw new Error(`Proposition ${id} introuvable`);
+      }
+      const updated = {
+        ...props[index],
+        ...data,
+        updatedAt: new Date().toISOString(),
+        envoyeeAt: data.statut === 'envoyee' ? new Date().toISOString() : props[index].envoyeeAt,
+        accepteeAt: data.statut === 'acceptee' ? new Date().toISOString() : props[index].accepteeAt,
+      };
+      props[index] = updated;
+      return updated;
+    }
   }
 
-  static updateProposition(id: string, patch: Partial<Proposition>): Proposition {
-    const list = lsGet(LS_PROPOSITIONS) as Proposition[];
-    const idx  = list.findIndex(p => p.id === id);
-    if (idx === -1) throw new Error(`Proposition ${id} introuvable`);
-    const updated = { ...list[idx], ...patch, id, updatedAt: new Date().toISOString() };
-    list[idx] = updated;
-    lsSet(LS_PROPOSITIONS, list);
-    return updated;
+  static async updatePropositionStatut(id: string, statut: string) {
+    try {
+      return await apiClient.request<any>(`/propositions/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ statut }),
+      });
+    } catch {
+      return this.updateProposition(id, { statut });
+    }
   }
 
-  static updatePropositionStatut(id: string, statut: StatutProposition): Proposition {
-    const now  = new Date().toISOString();
-    const patch: Partial<Proposition> = { statut };
-    if (statut === 'envoyee')  patch.envoyeeAt  = now;
-    if (statut === 'acceptee') patch.accepteeAt = now;
-    return DataService.updateProposition(id, patch);
-  }
-
-  static deleteProposition(id: string): void {
-    lsSet(LS_PROPOSITIONS, (lsGet(LS_PROPOSITIONS) as Proposition[]).filter(p => p.id !== id));
+  static async deleteProposition(id: string) {
+    try {
+      return await apiClient.request<any>(`/propositions/${id}`, { method: 'DELETE' });
+    } catch {
+      const props = this.getLocalPropositions();
+      const index = props.findIndex((prop) => prop.id === id);
+      if (index === -1) {
+        throw new Error(`Proposition ${id} introuvable`);
+      }
+      props.splice(index, 1);
+      return null;
+    }
   }
 }

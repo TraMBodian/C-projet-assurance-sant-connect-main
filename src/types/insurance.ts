@@ -21,6 +21,7 @@ export interface Assure {
   prime?: string;
   statut: string;
   type: string;
+  assurePrincipalId?: string;
 }
 
 export interface Beneficiaire {

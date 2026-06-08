@@ -36,8 +36,11 @@ services:
       ADMIN_DEFAULT_PASSWORD: ${ADMIN_DEFAULT_PASSWORD}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      UPLOAD_DIR: /app/uploads
     ports:
       - "3001:3001"
+    volumes:
+      - uploads_data:/app/uploads
     entrypoint:
       - sh
       - -c
@@ -47,15 +50,25 @@ services:
              --spring.profiles.active=postgres
 
   frontend:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
     container_name: react-frontend
     restart: always
     depends_on:
       - backend
     environment:
-      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3001/api}
+      VITE_API_BASE_URL: /api
+      VITE_PROXY_TARGET: http://backend:3001
+      VITE_HMR_CLIENT_PORT: 5173
     ports:
       - "5173:8080"
+    volumes:
+      - ./src:/app/src
+      - ./public:/app/public
+      - ./index.html:/app/index.html
+      - ./vite.config.ts:/app/vite.config.ts
 
 volumes:
   postgres_data:
+  uploads_data:

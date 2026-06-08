@@ -1,16 +1,37 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Users, Stethoscope, Search, Mail, Building2, ShieldCheck,
-  Trash2, CheckCircle, Clock, XCircle, Ban, Phone, MapPin,
-  UserCheck, UserX, RefreshCw, AlertCircle,
+  Trash2, CheckCircle, Clock, XCircle, Ban, Phone,
+  UserCheck, UserX, RefreshCw, AlertCircle, Download,
 } from "@/components/ui/Icons";
 import AppLayout from "@/components/AppLayout";
 import { apiClient } from "@/services/apiClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
+import TablePagination from "@/components/admin/TablePagination";
+import ConfirmDialog from "@/components/admin/ConfirmDialog";
+
+function exportCSV(data: any[], filename: string) {
+  const headers = ["Nom complet", "Email", "Rôle", "Statut", "Organisation", "Téléphone", "Date inscription"];
+  const rows = data.map(u => [
+    u.fullName || u.full_name || "",
+    u.email || "",
+    (u.role || "").toUpperCase(),
+    (u.status || "").toUpperCase(),
+    u.organization || "",
+    u.telephone || "",
+    u.createdAt || u.created_at || "",
+  ]);
+  const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
 
 const roleConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   ADMIN:       { label: "Admin",       color: "bg-blue-100 text-blue-800",     icon: <ShieldCheck className="w-3 h-3" /> },
@@ -49,6 +70,9 @@ export default function UsersPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterKey>("all");
   const [actioningId, setActioningId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [confirmDelete, setConfirmDelete] = useState<any | null>(null);
 
   const isAdmin = currentUser?.role === "admin";
 
@@ -79,8 +103,14 @@ export default function UsersPage() {
   };
 
   const handleDelete = async (u: any) => {
+    setConfirmDelete(u);
+  };
+
+  const doDelete = async () => {
+    const u = confirmDelete;
+    if (!u) return;
+    setConfirmDelete(null);
     const name = u.fullName || u.full_name || u.email;
-    if (!window.confirm(`Supprimer définitivement "${name}" ?`)) return;
     setActioningId(String(u.id));
     try {
       await apiClient.deleteUser(String(u.id));
@@ -90,6 +120,9 @@ export default function UsersPage() {
       toast({ title: "Erreur", description: "Impossible de supprimer l'utilisateur.", variant: "destructive" });
     } finally { setActioningId(null); }
   };
+
+  const setFilterAndReset = (f: FilterKey) => { setFilter(f); setPage(1); };
+  const setSearchAndReset = (s: string)    => { setSearch(s); setPage(1); };
 
   const filtered = users.filter((u) => {
     const role   = (u.role   || "").toUpperCase();
@@ -106,6 +139,11 @@ export default function UsersPage() {
     return matchRole && matchSearch;
   });
 
+  const paginated = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, page, pageSize]);
+
   const counts = {
     total:        users.length,
     prestataires: users.filter((u) => (u.role || "").toUpperCase() === "PRESTATAIRE").length,
@@ -115,7 +153,7 @@ export default function UsersPage() {
 
   return (
     <AppLayout title="Gestion des utilisateurs">
-      <div className="space-y-4 sm:space-y-5">
+      <div className="space-y-4 sm:space-y-5 px-4 sm:px-6">
 
         {/* ── Stats ──────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
@@ -128,7 +166,7 @@ export default function UsersPage() {
             <Card
               key={c.label}
               className={`p-3 sm:p-4 text-center ${c.clickable ? "cursor-pointer hover:shadow-md transition-shadow" : ""} ${c.clickable && filter === "PENDING" ? "ring-2 ring-yellow-400" : ""}`}
-              onClick={c.clickable ? () => setFilter(filter === "PENDING" ? "all" : "PENDING") : undefined}
+              onClick={c.clickable ? () => setFilterAndReset(filter === "PENDING" ? "all" : "PENDING") : undefined}
             >
               <p className={`text-xl sm:text-2xl font-bold ${c.color}`}>{c.value}</p>
               <p className="text-xs text-gray-500 mt-0.5 truncate">{c.label}</p>
@@ -143,24 +181,31 @@ export default function UsersPage() {
             <input
               placeholder="Rechercher par nom, email..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => setSearchAndReset(e.target.value)}
               className="w-full pl-9 pr-3 py-2 rounded-lg border border-input bg-card text-sm outline-none focus:ring-2 focus:ring-blue-500/30"
             />
           </div>
-          <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none shrink-0">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none shrink-0">
             {FILTERS.map(({ key, label }) => (
               <button
                 key={key}
-                onClick={() => setFilter(key)}
-                className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${
+                onClick={() => setFilterAndReset(key)}
+                className={`px-4 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap shrink-0 border ${
                   filter === key
-                    ? key === "PENDING" ? "bg-yellow-500 text-white" : "bg-brand text-white"
-                    : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
+                    ? "bg-[#1B5299] text-white border-[#1B5299] shadow-sm"
+                    : "bg-white border-gray-200 text-gray-600 hover:border-[#1B5299] hover:text-[#1B5299]"
                 }`}
               >
                 {label}
               </button>
             ))}
+            <button
+              onClick={() => exportCSV(filtered, `utilisateurs-${new Date().toISOString().slice(0,10)}.csv`)}
+              title="Exporter en CSV"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-gray-200 bg-white text-gray-600 hover:border-[#1B5299] hover:text-[#1B5299] text-xs font-medium transition-colors whitespace-nowrap shrink-0"
+            >
+              <Download className="w-3 h-3" /> CSV
+            </button>
           </div>
         </div>
 
@@ -197,7 +242,7 @@ export default function UsersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((u, i) => {
+                  {paginated.map((u, i) => {
                     const role      = (u.role   || "").toUpperCase();
                     const status    = (u.status || "ACTIVE").toUpperCase();
                     const roleCfg   = roleConfig[role]     || { label: role,   color: "bg-gray-100 text-gray-800", icon: null };
@@ -275,7 +320,7 @@ export default function UsersPage() {
 
             {/* Cartes mobile */}
             <div className="md:hidden space-y-2 sm:space-y-3">
-              {filtered.map((u) => {
+              {paginated.map((u) => {
                 const role      = (u.role   || "").toUpperCase();
                 const status    = (u.status || "ACTIVE").toUpperCase();
                 const roleCfg   = roleConfig[role]     || { label: role,   color: "bg-gray-100 text-gray-800", icon: null };
@@ -364,8 +409,30 @@ export default function UsersPage() {
                 );
               })}
             </div>
+
+            {/* ── Pagination ── */}
+            {filtered.length > pageSize && (
+              <TablePagination
+                page={page}
+                pageSize={pageSize}
+                total={filtered.length}
+                onPageChange={setPage}
+                onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
+              />
+            )}
           </>
         )}
+
+        {/* ── Dialogue de confirmation suppression ── */}
+        <ConfirmDialog
+          open={confirmDelete !== null}
+          title="Supprimer l'utilisateur"
+          description={`Supprimer définitivement "${confirmDelete?.fullName || confirmDelete?.full_name || confirmDelete?.email}" ? Cette action est irréversible.`}
+          confirmLabel="Supprimer"
+          destructive
+          onConfirm={doDelete}
+          onCancel={() => setConfirmDelete(null)}
+        />
       </div>
     </AppLayout>
   );

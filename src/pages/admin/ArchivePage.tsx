@@ -111,7 +111,7 @@ export default function ArchivePage() {
 
   return (
     <AppLayout title="Archives médicales">
-      <div className="space-y-5">
+      <div className="space-y-5 px-4 sm:px-6">
 
         {/* ── Header ─────────────────────────────────────────────────── */}
         <div className="flex items-center gap-3">
@@ -126,12 +126,12 @@ export default function ArchivePage() {
 
         {/* ── Tabs + Search ───────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-          <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
+          <div className="flex gap-2">
             {(["consultations", "prescriptions"] as Tab[]).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
-                className={`flex items-center gap-1.5 px-4 py-1.5 rounded-md text-sm font-medium transition-all ${tab === t ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-medium transition-colors border ${tab === t ? "bg-[#1B5299] text-white border-[#1B5299] shadow-sm" : "bg-white text-gray-600 border-gray-200 hover:border-[#1B5299] hover:text-[#1B5299]"}`}
               >
                 {t === "consultations" ? <Stethoscope size={14} /> : <Pill size={14} />}
                 {t === "consultations" ? "Consultations" : "Ordonnances"}

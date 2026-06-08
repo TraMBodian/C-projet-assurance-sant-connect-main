@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Search, Loader2, ChevronDown } from "@/components/ui/Icons";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,11 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function NewConsultationPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { user, myPrestataire } = useAuth();
   const { toast } = useToast();
+
+  const assureIdParam = searchParams.get("assureId");
 
   const [assures, setAssures] = useState<any[]>([]);
   const [prestataires, setPrestataires] = useState<any[]>([]);
@@ -28,26 +31,33 @@ export default function NewConsultationPage() {
   const [formData, setFormData] = useState({
     motif: "",
     diagnostic: "",
-    date: new Date().toISOString().split("T")[0],
+    date: searchParams.get("date") ?? new Date().toISOString().split("T")[0],
     heure: "08:00",
-    statut: "COMPLETEE",
+    statut: "PROGRAMMEE",
   });
 
   useEffect(() => {
     Promise.all([DataService.getAssures(), DataService.getPrestataires()])
       .then(([assureList, prestataireList]) => {
         setAssures(assureList ?? []);
-        setPrestataires(prestataireList ?? []);
-        const myPrestataire = (prestataireList ?? []).find(
-          (p: any) => p.email?.toLowerCase() === user?.email?.toLowerCase()
-        );
-        if (myPrestataire) setSelectedPrestataire(myPrestataire);
+        const actifs = (prestataireList ?? []).filter((p: any) => p.statut === "ACTIF");
+        setPrestataires(actifs);
+        // Utilise myPrestataire du context (centralisé) — évite la recherche par email
+        if (myPrestataire) {
+          const match = actifs.find((p: any) => p.id === myPrestataire.id);
+          if (match) setSelectedPrestataire(match);
+        }
+        // Pre-fill assure from ?assureId= query param
+        if (assureIdParam) {
+          const matchAssure = (assureList ?? []).find((a: any) => String(a.id) === assureIdParam);
+          if (matchAssure) setSelectedAssure(matchAssure);
+        }
       })
       .catch(() =>
         toast({ title: "Erreur de chargement", description: "Impossible de charger les données", variant: "destructive" })
       )
       .finally(() => setInitLoading(false));
-  }, [user]);
+  }, [myPrestataire]);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -64,7 +74,7 @@ export default function NewConsultationPage() {
     return (
       a.nom?.toLowerCase().includes(q) ||
       a.prenom?.toLowerCase().includes(q) ||
-      (a.numeroAssure ?? "").toLowerCase().includes(q)
+      (a.numero ?? "").toLowerCase().includes(q)
     );
   });
 
@@ -83,8 +93,8 @@ export default function NewConsultationPage() {
     try {
       const dateConsultation = `${formData.date}T${formData.heure}:00`;
       await DataService.createConsultation({
-        assure: { id: selectedAssure.id },
-        prestataire: { id: selectedPrestataire.id },
+        assureId: selectedAssure.id,
+        prestataireId: selectedPrestataire.id,
         motif: formData.motif,
         diagnostic: formData.diagnostic || null,
         dateConsultation,
@@ -168,8 +178,8 @@ export default function NewConsultationPage() {
                             }}
                           >
                             <span className="font-medium">{a.nom} {a.prenom}</span>
-                            {a.numeroAssure && (
-                              <span className="ml-2 text-xs text-muted-foreground">#{a.numeroAssure}</span>
+                            {a.numero && (
+                              <span className="ml-2 text-xs text-muted-foreground">#{a.numero}</span>
                             )}
                           </button>
                         ))
@@ -193,8 +203,10 @@ export default function NewConsultationPage() {
                       required
                     >
                       <option value="">Sélectionner un prestataire</option>
-                      {prestataires.map((p: any) => (
-                        <option key={p.id} value={p.id}>{p.nom}</option>
+                      {prestataires.length === 0 ? (
+                        <option disabled value="">Aucun prestataire actif disponible</option>
+                      ) : prestataires.map((p: any) => (
+                        <option key={p.id} value={p.id}>{p.nom}{p.type ? ` — ${p.type}` : ""}</option>
                       ))}
                     </select>
                     <ChevronDown size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
@@ -237,8 +249,8 @@ export default function NewConsultationPage() {
                       onChange={(e) => setFormData({ ...formData, statut: e.target.value })}
                       className="w-full appearance-none px-3 py-2 pr-9 border border-input rounded-lg bg-background text-sm"
                     >
-                      <option value="COMPLETEE">Effectuée</option>
                       <option value="PROGRAMMEE">Programmée</option>
+                      <option value="COMPLETEE">Effectuée</option>
                       <option value="ANNULEE">Annulée</option>
                     </select>
                     <ChevronDown size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />

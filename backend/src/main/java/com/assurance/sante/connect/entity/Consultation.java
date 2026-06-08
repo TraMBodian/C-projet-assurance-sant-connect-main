@@ -5,7 +5,12 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "consultations")
+@Table(name = "consultations", indexes = {
+    @Index(name = "idx_consultation_assure_id",     columnList = "assure_id"),
+    @Index(name = "idx_consultation_prestataire_id", columnList = "prestataire_id"),
+    @Index(name = "idx_consultation_statut",         columnList = "statut"),
+    @Index(name = "idx_consultation_date",           columnList = "date_consultation"),
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -34,7 +39,10 @@ public class Consultation {
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
-    private ConsultationStatut statut = ConsultationStatut.COMPLETEE;
+    private ConsultationStatut statut = ConsultationStatut.PROGRAMMEE;
+
+    @Column(name = "motif_annulation", columnDefinition = "TEXT")
+    private String motifAnnulation;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();

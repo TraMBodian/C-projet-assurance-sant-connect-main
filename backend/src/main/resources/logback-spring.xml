@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- Masquage des données médicales sensibles dans tous les messages de log -->
+    <conversionRule conversionWord="maskedMsg"
+        converterClass="com.assurance.sante.connect.logging.MedicalDataMaskingConverter"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %maskedMsg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Réduire le bruit Hibernate en production -->
+    <springProfile name="postgres,mysql">
+        <logger name="org.hibernate.SQL" level="WARN"/>
+        <logger name="org.hibernate.type" level="WARN"/>
+        <logger name="com.zaxxer.hikari" level="WARN"/>
+    </springProfile>
+
+    <!-- Logs applicatifs détaillés en dev -->
+    <springProfile name="h2,dev">
+        <logger name="com.assurance.sante" level="DEBUG"/>
+    </springProfile>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+</configuration>

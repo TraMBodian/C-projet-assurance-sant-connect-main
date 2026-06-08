@@ -6,4 +6,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ConsultationRepository extends JpaRepository<Consultation, Long> {
+    java.util.List<Consultation> findByPrestataireId(Long prestataireId);
+    java.util.List<Consultation> findByAssureId(Long assureId);
+    long countByPrestataireId(Long prestataireId);
 }

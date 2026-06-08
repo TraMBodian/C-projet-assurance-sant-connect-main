@@ -7,11 +7,14 @@ import com.assurance.sante.connect.dto.UserDto;
 import com.assurance.sante.connect.dto.ApiResponse;
 import com.assurance.sante.connect.entity.User;
 import com.assurance.sante.connect.repository.UserRepository;
+import com.assurance.sante.connect.service.AuditLogService;
 import com.assurance.sante.connect.service.AuthService;
 import com.assurance.sante.connect.service.ActiveSessionService;
 import com.assurance.sante.connect.service.OtpService;
 import com.assurance.sante.connect.service.UserService;
 import com.assurance.sante.connect.security.JwtAuthenticationToken;
+import com.assurance.sante.connect.security.ClientIpResolver;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +38,8 @@ public class AuthController {
     private final OtpService           otpService;
     private final UserRepository       userRepository;
     private final UserService          userService;
+    private final AuditLogService      auditLogService;
+    private final ClientIpResolver     clientIpResolver;
 
     @Value("${app.jwtRefreshExpirationMs:604800000}")
     private long refreshExpirationMs;
@@ -48,7 +53,8 @@ public class AuthController {
         ResponseCookie cookie = ResponseCookie.from("refresh_token", tokenValue)
                 .httpOnly(true)
                 .secure(cookieSecure)
-                .sameSite(cookieSecure ? "None" : "Lax")
+                // Strict en prod (HTTPS), Lax en dev (HTTP) — None causerait des problèmes sans HTTPS
+                .sameSite(cookieSecure ? "Strict" : "Lax")
                 .path("/api/auth")
                 .maxAge(Duration.ofMillis(refreshExpirationMs))
                 .build();
@@ -59,7 +65,7 @@ public class AuthController {
         ResponseCookie cookie = ResponseCookie.from("refresh_token", "")
                 .httpOnly(true)
                 .secure(cookieSecure)
-                .sameSite(cookieSecure ? "None" : "Lax")
+                .sameSite(cookieSecure ? "Strict" : "Lax")
                 .path("/api/auth")
                 .maxAge(0)
                 .build();
@@ -71,20 +77,40 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(
             @Valid @RequestBody LoginRequest request,
+            HttpServletRequest httpRequest,
             HttpServletResponse response) {
 
         AuthResponse auth = authService.login(request);
 
-        // Refresh token → cookie httpOnly (jamais exposé dans le body)
         setRefreshCookie(response, auth.getRefreshToken());
         auth.setRefreshToken(null);
+
+        // Audit : connexion réussie
+        User user = userRepository.findByEmail(request.getEmail()).orElse(null);
+        auditLogService.log(
+            "LOGIN", "USER",
+            user != null ? user.getId() : null,
+            request.getEmail(),
+            user != null ? user.getRole().name() : "UNKNOWN",
+            "Connexion réussie",
+            resolveIp(httpRequest));
 
         return ResponseEntity.ok(ApiResponse.success(auth));
     }
 
     @PostMapping("/register")
-    public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request) {
+    public ResponseEntity<ApiResponse<AuthResponse>> register(
+            @Valid @RequestBody RegisterRequest request,
+            HttpServletRequest httpRequest) {
+
         AuthResponse auth = authService.register(request);
+
+        auditLogService.log(
+            "REGISTER", "USER", null,
+            request.getEmail(), request.getRole(),
+            "Nouveau compte créé : " + request.getFullName(),
+            resolveIp(httpRequest));
+
         return ResponseEntity.ok(ApiResponse.success(auth));
     }
 
@@ -101,16 +127,25 @@ public class AuthController {
     public ResponseEntity<ApiResponse<String>> logout(
             Authentication authentication,
             @CookieValue(name = "refresh_token", required = false) String refreshToken,
+            HttpServletRequest httpRequest,
             HttpServletResponse response) {
 
+        String email = null;
+        String role  = "UNKNOWN";
         if (authentication instanceof JwtAuthenticationToken jwt) {
-            authService.logout(jwt.getEmail());
+            email = jwt.getEmail();
+            authService.logout(email);
+            User user = userRepository.findByEmail(email).orElse(null);
+            if (user != null) role = user.getRole().name();
         }
-        // Révoquer le refresh token et effacer le cookie
         if (refreshToken != null && !refreshToken.isBlank()) {
             authService.revokeRefreshToken(refreshToken);
         }
         clearRefreshCookie(response);
+
+        auditLogService.log("LOGOUT", "USER", null, email, role,
+            "Déconnexion", resolveIp(httpRequest));
+
         return ResponseEntity.ok(ApiResponse.success("Déconnexion réussie"));
     }
 
@@ -162,15 +197,18 @@ public class AuthController {
 
     /** Étape 3 : réinitialiser le mot de passe avec l'OTP */
     @PostMapping("/reset-password")
-    public ResponseEntity<ApiResponse<String>> resetPassword(@RequestBody Map<String, String> body) {
+    public ResponseEntity<ApiResponse<String>> resetPassword(
+            @RequestBody Map<String, String> body,
+            HttpServletRequest httpRequest) {
         String email       = body.get("email");
         String code        = body.get("code");
         String newPassword = body.get("newPassword");
         if (email == null || code == null || newPassword == null) {
             return ResponseEntity.badRequest().body(ApiResponse.error("Données manquantes"));
         }
-        if (newPassword.length() < 6) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Mot de passe trop court (min 6 caractères)"));
+        if (!com.assurance.sante.connect.security.PasswordPolicy.isValid(newPassword)) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(
+                com.assurance.sante.connect.security.PasswordPolicy.REQUIREMENTS_MESSAGE));
         }
         if (!otpService.verifyOtp(email, code)) {
             return ResponseEntity.badRequest().body(ApiResponse.error("Code invalide ou expiré"));
@@ -179,6 +217,18 @@ public class AuthController {
                 .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
         userService.changePassword(user.getId(), null, newPassword);
         otpService.invalidate(email);
+
+        auditLogService.log("PASSWORD_RESET", "USER", user.getId(),
+            email, user.getRole().name(),
+            "Mot de passe réinitialisé via OTP",
+            resolveIp(httpRequest));
+
         return ResponseEntity.ok(ApiResponse.success("Mot de passe réinitialisé avec succès"));
+    }
+
+    // ── Helper IP ─────────────────────────────────────────────────────────────
+
+    private String resolveIp(HttpServletRequest req) {
+        return clientIpResolver.resolve(req);
     }
 }

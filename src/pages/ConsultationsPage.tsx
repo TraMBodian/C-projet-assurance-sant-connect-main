@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Plus, Search, Calendar, Stethoscope, FileText, Loader2, AlertCircle, Download, X } from "@/components/ui/Icons";
-import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { Plus, Search, Calendar, Stethoscope, FileText, Loader2, AlertCircle, Download, X, Edit, CheckCircle } from "@/components/ui/Icons";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { DataService } from "@/services/dataService";
+import { useAuth } from "@/context/AuthContext";
+import { apiClient } from "@/services/apiClient";
+import { useToast } from "@/hooks/use-toast";
 
 const statusConfig: Record<string, { style: string; label: string }> = {
   PROGRAMMEE: { style: "bg-blue-100 text-blue-700 border-blue-200",   label: "Programmée" },
@@ -37,24 +40,54 @@ function exportCSV(consultations: any[]) {
 
 export default function ConsultationsPage() {
   const navigate = useNavigate();
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("TOUS");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { user, myPrestataire } = useAuth();
+  const { toast } = useToast();
+  const isPrestataire = user?.role === 'prestataire';
+  const isClient      = user?.role === 'client';
+
+  // ── Annulation avec motif ────────────────────────────────────────────────────
+  const [annulationTarget, setAnnulationTarget] = useState<any>(null);
+  const [motifAnnulation,  setMotifAnnulation]  = useState("");
+  const [actionLoading, setActionLoading] = useState<number | null>(null);
+
+  const [search,       setSearch]       = useState(searchParams.get("q") ?? "");
+  const [statusFilter, setStatusFilter] = useState(searchParams.get("statut") ?? "TOUS");
+  const [dateFrom,     setDateFrom]     = useState(searchParams.get("from") ?? "");
+  const [dateTo,       setDateTo]       = useState(searchParams.get("to") ?? "");
+
+  // Sync état → URL
+  useEffect(() => {
+    const p: Record<string, string> = {};
+    if (search)                   p.q      = search;
+    if (statusFilter !== "TOUS")  p.statut = statusFilter;
+    if (dateFrom)                 p.from   = dateFrom;
+    if (dateTo)                   p.to     = dateTo;
+    setSearchParams(p, { replace: true });
+  }, [search, statusFilter, dateFrom, dateTo]);
   const [consultations, setConsultations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    DataService.getConsultations()
-      .then((list) => setConsultations(list ?? []))
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+    const fetchAll = async () => {
+      try {
+        // Le backend filtre déjà par prestataire connecté — on reçoit uniquement nos consultations
+        const list = await DataService.getConsultations();
+        setConsultations(list ?? []);
+      } catch {
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAll();
   }, []);
 
   const assureNom = (c: any) =>
     c.assure ? `${c.assure.nom} ${c.assure.prenom}` : "";
 
+  // Le backend retourne déjà les consultations filtrées par rôle — pas de filtrage frontend
   const filtered = consultations.filter((c) => {
     const q = search.toLowerCase();
     const matchSearch =
@@ -76,9 +109,51 @@ export default function ConsultationsPage() {
 
   const hasFilters = search || statusFilter !== "TOUS" || dateFrom || dateTo;
 
+  const handleConfirmer = async (c: any) => {
+    setActionLoading(c.id);
+    try {
+      await apiClient.patchConsultationStatut(c.id, "COMPLETEE");
+      setConsultations(prev => prev.map(x => x.id === c.id ? { ...x, statut: "COMPLETEE" } : x));
+      toast({ title: "Consultation confirmée", description: "Statut mis à jour : Effectuée" });
+    } catch {
+      toast({ title: "Erreur", description: "Impossible de confirmer la consultation", variant: "destructive" });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleAnnuler = async () => {
+    if (!annulationTarget) return;
+    setActionLoading(annulationTarget.id);
+    try {
+      await apiClient.patchConsultationStatut(annulationTarget.id, "ANNULEE", motifAnnulation || undefined);
+      setConsultations(prev => prev.map(x => x.id === annulationTarget.id ? { ...x, statut: "ANNULEE", motifAnnulation } : x));
+      toast({ title: "Consultation annulée", description: "Statut mis à jour : Annulée" });
+      setAnnulationTarget(null);
+      setMotifAnnulation("");
+    } catch {
+      toast({ title: "Erreur", description: "Impossible d'annuler la consultation", variant: "destructive" });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   return (
     <AppLayout title="Suivi des Consultations">
-      <div className="space-y-4 sm:space-y-5">
+      <div className="space-y-4 sm:space-y-5 px-4 sm:px-6">
+
+        {/* Bandeau prestataire */}
+        {isPrestataire && myPrestataire && (
+          <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+            <Stethoscope size={18} className="text-blue-600 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-blue-800 truncate">{myPrestataire.nom}</p>
+              <p className="text-xs text-blue-600 truncate">
+                {consultations.length} consultation{consultations.length !== 1 ? "s" : ""} enregistrée{consultations.length !== 1 ? "s" : ""}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Compteurs */}
         {!loading && !error && (
@@ -130,11 +205,13 @@ export default function ConsultationsPage() {
                   <span className="sm:hidden">CSV</span>
                 </Button>
               )}
-              <Button className="whitespace-nowrap" onClick={() => navigate("/consultations/new")}>
-                <Plus size={15} className="mr-1.5" />
-                <span className="hidden sm:inline">Nouvelle consultation</span>
-                <span className="sm:hidden">Nouvelle</span>
-              </Button>
+              {!isClient && (
+                <Button className="whitespace-nowrap" onClick={() => navigate("/consultations/new")}>
+                  <Plus size={15} className="mr-1.5" />
+                  <span className="hidden sm:inline">Nouvelle consultation</span>
+                  <span className="sm:hidden">Nouvelle</span>
+                </Button>
+              )}
             </div>
           </div>
 
@@ -175,9 +252,25 @@ export default function ConsultationsPage() {
 
         {/* États */}
         {loading ? (
-          <div className="flex items-center justify-center h-48 gap-3 text-muted-foreground">
-            <Loader2 size={22} className="animate-spin" />
-            <span className="text-sm">Chargement...</span>
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="bg-card rounded-xl p-4 sm:p-5 border border-border animate-pulse">
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div className="flex items-start gap-3 flex-1">
+                    <div className="w-9 h-9 sm:w-11 sm:h-11 bg-muted rounded-lg shrink-0" />
+                    <div className="flex-1 space-y-2 pt-1">
+                      <div className="h-4 bg-muted rounded w-2/3" />
+                      <div className="h-3 bg-muted rounded w-1/3" />
+                    </div>
+                  </div>
+                  <div className="w-20 h-5 bg-muted rounded-full shrink-0" />
+                </div>
+                <div className="space-y-2 mt-2">
+                  <div className="h-3 bg-muted rounded w-1/2" />
+                  <div className="h-3 bg-muted rounded w-3/4" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center h-48 gap-2 text-center px-4">
@@ -252,13 +345,94 @@ export default function ConsultationsPage() {
                         </span>
                       </div>
                     )}
+                    {c.motifAnnulation && c.statut === "ANNULEE" && (
+                      <div className="flex items-start gap-2">
+                        <X size={13} className="text-red-400 mt-0.5 shrink-0" />
+                        <span className="text-xs text-red-600">Motif annulation : {c.motifAnnulation}</span>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Actions PROGRAMMEE */}
+                  {c.statut === "PROGRAMMEE" && (
+                    <div className="flex gap-2 mt-3 pt-3 border-t border-border">
+                      <button
+                        onClick={() => navigate(`/consultations/${c.id}/edit`)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-input rounded-lg hover:bg-muted transition-colors"
+                      >
+                        <Edit size={12} /> Modifier
+                      </button>
+                      <button
+                        onClick={() => handleConfirmer(c)}
+                        disabled={actionLoading === c.id}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-60"
+                      >
+                        {actionLoading === c.id ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
+                        Effectuée
+                      </button>
+                      <button
+                        onClick={() => { setAnnulationTarget(c); setMotifAnnulation(""); }}
+                        disabled={actionLoading === c.id}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors disabled:opacity-60"
+                      >
+                        <X size={12} /> Annuler
+                      </button>
+                    </div>
+                  )}
                 </motion.div>
               );
             })}
           </div>
         )}
       </div>
+
+      {/* Modal annulation avec motif */}
+      <AnimatePresence>
+        {annulationTarget && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+            onClick={() => setAnnulationTarget(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6"
+            >
+              <h3 className="font-bold text-lg mb-1">Annuler la consultation</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                {annulationTarget.assure ? `${annulationTarget.assure.nom} ${annulationTarget.assure.prenom}` : ""}
+                {annulationTarget.dateConsultation ? ` — ${new Date(annulationTarget.dateConsultation).toLocaleDateString("fr-FR")}` : ""}
+              </p>
+              <label className="text-sm font-medium">Motif d'annulation (optionnel)</label>
+              <textarea
+                value={motifAnnulation}
+                onChange={e => setMotifAnnulation(e.target.value)}
+                placeholder="Précisez la raison de l'annulation..."
+                className="w-full mt-2 px-3 py-2 border border-input rounded-lg bg-background min-h-[80px] text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+              <div className="flex gap-2 mt-4 justify-end">
+                <Button variant="outline" size="sm" onClick={() => setAnnulationTarget(null)}>
+                  Fermer
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={handleAnnuler}
+                  disabled={actionLoading === annulationTarget.id}
+                >
+                  {actionLoading === annulationTarget.id ? <Loader2 size={14} className="mr-1.5 animate-spin" /> : null}
+                  Confirmer l'annulation
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </AppLayout>
   );
 }

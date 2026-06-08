@@ -20,7 +20,7 @@ public class Police {
     private String numero;
 
     @ManyToOne
-    @JoinColumn(name = "assure_id", nullable = false)
+    @JoinColumn(name = "assure_id", nullable = true)
     private Assure assure;
 
     @Column(nullable = false)
@@ -33,6 +33,12 @@ public class Police {
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private PoliceStatut statut = PoliceStatut.ACTIVE;
+
+    @Column(name = "date_debut")
+    private LocalDateTime dateDebut;
+
+    @Column(name = "date_fin")
+    private LocalDateTime dateFin;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();

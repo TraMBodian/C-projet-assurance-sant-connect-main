@@ -8,9 +8,9 @@ import { chatConditionsGenerales, ClaudeMessage } from "@/services/claudeService
 
 // ─── Données structurées du document ─────────────────────────────────────────
 
-const CG_DATE        = "2024";
+const CG_DATE        = String(new Date().getFullYear());
 const CG_VERSION     = "1.0";
-const CG_DATE_EFFET  = "01 janvier 2026";
+const CG_DATE_EFFET  = new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
 
 interface Article {
   titre: string;
@@ -401,9 +401,9 @@ const CONVENTIONS: Chapitre = {
       contenu: (
         <div className="text-sm leading-relaxed space-y-3">
           <p>La prime forfaitaire est une <strong>prime provisionnelle</strong> ajustée à l'échéance selon un rapport Sinistres/Primes (S/P).</p>
-          <div className="bg-teal-50 border border-teal-200 rounded p-3 text-xs">
-            <p className="font-semibold text-teal-800 mb-1">Ajustement à l'échéance :</p>
-            <ul className="text-teal-700 space-y-0.5 list-disc ml-3">
+          <div className="bg-blue-50 border border-blue-200 rounded p-3 text-xs">
+            <p className="font-semibold text-blue-800 mb-1">Ajustement à l'échéance :</p>
+            <ul className="text-blue-700 space-y-0.5 list-disc ml-3">
               <li><strong>Sinistres</strong> = total des dépenses effectuées ou restant à effectuer pour les bénéficiaires</li>
               <li><strong>Primes</strong> = total des primes nettes acquises au titre de l'exercice</li>
               <li>Si l'assuré refuse la nouvelle prime ajustée : notification par LR dans 1 mois. Les 3 premiers mois sont alors facturés à 68 % de la prime précédente.</li>

@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, ChevronRight } from "@/components/ui/Icons";
 import { useNavigate } from "react-router-dom";
+import { apiClient } from "@/services/apiClient";
 
 export const PendingRegistrationsWidget = () => {
   const navigate = useNavigate();
@@ -24,19 +25,8 @@ export const PendingRegistrationsWidget = () => {
 
   const loadPendingCount = async () => {
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/users?status=pending&count=true`,
-        {
-          headers: {
-            "Authorization": `Bearer ${sessionStorage.getItem("auth_token")}`,
-          },
-        }
-      );
-
-      if (!response.ok) throw new Error("Failed to load count");
-
-      const data = await response.json();
-      setCount(data.count || 0);
+      const data = await apiClient.request<any>("/users?status=pending&count=true");
+      setCount(data?.count || 0);
     } catch (error) {
       console.error("Error loading pending count:", error);
     } finally {

@@ -5,6 +5,7 @@ import com.assurance.sante.connect.entity.Sinistre;
 import com.assurance.sante.connect.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -25,6 +26,7 @@ public class DashboardController {
     private final PrescriptionRepository prescriptionRepository;
 
     @GetMapping("/stats")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getStats() {
         List<Sinistre> sinistres = sinistreRepository.findAll();
 

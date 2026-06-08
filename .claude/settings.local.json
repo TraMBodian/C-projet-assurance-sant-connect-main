@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tasklist /FI \"PID eq 11600\")",
+      "PowerShell(Get-Process -Id 11600 -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-NetTCPConnection -LocalPort 3001 -State Listen -ErrorAction SilentlyContinue | Select-Object LocalAddress, LocalPort, @{N='Process';E={\\(Get-Process -Id $_.OwningProcess -EA SilentlyContinue\\).Name}}, OwningProcess)",
+      "Bash(wmic process *)"
+    ]
+  }
+}

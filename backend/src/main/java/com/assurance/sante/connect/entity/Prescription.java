@@ -1,5 +1,6 @@
 package com.assurance.sante.connect.entity;
 
+import com.assurance.sante.connect.entity.Prestataire;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -18,6 +19,11 @@ public class Prescription {
     @ManyToOne
     @JoinColumn(name = "consultation_id", nullable = false)
     private Consultation consultation;
+
+    /** Prestataire qui a rédigé la prescription (lien direct, évite de traverser consultation → prestataire) */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "prescripteur_id")
+    private Prestataire prescripteur;
 
     @Column(nullable = false)
     private String medicament;

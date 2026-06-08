@@ -1,29 +1,20 @@
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, ShieldCheck, Zap, Building2 } from "@/components/ui/Icons";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { useToast } from "@/hooks/use-toast";
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { signIn, user } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [showReset, setShowReset] = useState(false);
-  const [resetEmail, setResetEmail] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [email,          setEmail]          = useState("");
+  const [password,       setPassword]       = useState("");
+  const [loading,        setLoading]        = useState(false);
   const [failedAttempts, setFailedAttempts] = useState(0);
-  const [blockedUntil, setBlockedUntil] = useState<number | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [loginError, setLoginError] = useState("");
+  const [blockedUntil,   setBlockedUntil]   = useState<number | null>(null);
+  const [showPassword,   setShowPassword]   = useState(false);
+  const [loginError,     setLoginError]     = useState("");
 
   useEffect(() => {
     if (user) navigate('/dashboard');
@@ -32,6 +23,7 @@ const LoginPage = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError("");
+
     if (!email || !password) {
       setLoginError("Veuillez remplir tous les champs.");
       return;
@@ -41,6 +33,7 @@ const LoginPage = () => {
       setLoginError(`Trop de tentatives. Réessayez dans ${remaining} minute(s).`);
       return;
     }
+
     setLoading(true);
     try {
       await signIn(email, password);
@@ -53,15 +46,26 @@ const LoginPage = () => {
         setLoginError("Impossible de contacter le serveur. Veuillez réessayer.");
         return;
       }
-      if (msg.toLowerCase().includes("attente") || msg.toLowerCase().includes("pending") || msg.toLowerCase().includes("approv")) {
+      if (
+        msg.toLowerCase().includes("attente") ||
+        msg.toLowerCase().includes("pending") ||
+        msg.toLowerCase().includes("approv")
+      ) {
         setLoginError("Votre compte est en cours de validation par un administrateur.");
+        return;
+      }
+      if (msg.toLowerCase().includes("rejeté") || msg.toLowerCase().includes("rejet")) {
+        setLoginError("Votre compte a été rejeté. Contactez l'administrateur.");
+        return;
+      }
+      if (msg.toLowerCase().includes("suspendu")) {
+        setLoginError("Votre compte est suspendu. Contactez l'administrateur.");
         return;
       }
       const newAttempts = failedAttempts + 1;
       setFailedAttempts(newAttempts);
       if (newAttempts >= 5) {
-        const blockTime = Date.now() + 5 * 60 * 1000;
-        setBlockedUntil(blockTime);
+        setBlockedUntil(Date.now() + 5 * 60 * 1000);
         setLoginError("5 tentatives échouées. Compte bloqué pendant 5 minutes.");
       } else {
         setLoginError(`Email ou mot de passe incorrect. (${5 - newAttempts} tentative(s) restante(s))`);
@@ -69,15 +73,6 @@ const LoginPage = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleResetPassword = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast({
-      title: "Réinitialisation non disponible",
-      description: "Veuillez contacter l'administrateur pour réinitialiser votre mot de passe.",
-      variant: "destructive",
-    });
   };
 
   return (
@@ -104,9 +99,10 @@ const LoginPage = () => {
       `}</style>
 
       {/* ── Panneau gauche ───────────────────────────────────────── */}
-      <div className="hidden lg:flex lg:w-1/2 relative flex-col items-center justify-center p-16 overflow-hidden"
-        style={{ background: '#f8fafc' }}>
-
+      <div
+        className="hidden lg:flex lg:w-1/2 relative flex-col items-center justify-center p-16 overflow-hidden"
+        style={{ background: '#f8fafc' }}
+      >
         <div className="relative z-10 flex flex-col items-center text-center">
           <img src="/logo1.png" alt="Logo" className="w-36 h-36 object-contain mb-6 drop-shadow-sm" />
           <h1 className="text-3xl font-extrabold tracking-tight mb-3 text-[#1e3c72]">
@@ -115,16 +111,17 @@ const LoginPage = () => {
           <p className="text-gray-500 text-base max-w-xs leading-relaxed">
             La plateforme de gestion d'assurance santé nouvelle génération
           </p>
-
           <div className="mt-10 flex flex-col gap-3 w-full max-w-xs">
             {[
               { icon: <ShieldCheck size={18} className="text-[#2a5298] shrink-0" />, text: "Données sécurisées & chiffrées" },
-              { icon: <Zap size={18} className="text-[#2a5298] shrink-0" />, text: "Accès instantané à vos polices" },
-              { icon: <Building2 size={18} className="text-[#2a5298] shrink-0" />, text: "Réseau de prestataires certifiés" },
+              { icon: <Zap        size={18} className="text-[#2a5298] shrink-0" />, text: "Accès instantané à vos polices" },
+              { icon: <Building2  size={18} className="text-[#2a5298] shrink-0" />, text: "Réseau de prestataires certifiés" },
             ].map((item) => (
-              <div key={item.text}
+              <div
+                key={item.text}
                 className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm text-gray-700"
-                style={{ background: 'rgba(42,82,152,0.06)', border: '1px solid rgba(42,82,152,0.12)' }}>
+                style={{ background: 'rgba(42,82,152,0.06)', border: '1px solid rgba(42,82,152,0.12)' }}
+              >
                 {item.icon}
                 <span>{item.text}</span>
               </div>
@@ -133,12 +130,11 @@ const LoginPage = () => {
         </div>
       </div>
 
-      {/* ── Panneau droit : dégradé premium ─────────────────────── */}
+      {/* ── Panneau droit ────────────────────────────────────────── */}
       <div
         className="w-full lg:w-1/2 flex flex-col items-center justify-center p-6 sm:p-10 relative overflow-hidden"
         style={{ background: 'linear-gradient(135deg, #1e3c72, #2a5298)' }}
       >
-        {/* Cercles décoratifs */}
         <div className="absolute -top-24 -right-24 w-80 h-80 bg-white/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-16 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -150,208 +146,123 @@ const LoginPage = () => {
 
         {/* Carte formulaire */}
         <div
-          className="card-animate relative z-10 w-full max-w-sm sm:max-w-md bg-white rounded-2xl p-8 sm:p-10"
+          className="card-animate relative z-10 w-full max-w-sm sm:max-w-md bg-white rounded-2xl p-5 xs:p-7 sm:p-10"
           style={{ boxShadow: '0 20px 40px rgba(0,0,0,0.18)', border: '1px solid rgba(255,255,255,0.15)' }}
         >
           <div className="mb-7">
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
-              {showReset ? "Réinitialiser" : "Bon retour"}
-            </h2>
-            <p className="text-sm text-gray-500 mt-1">
-              {showReset ? "Modifiez votre mot de passe ci-dessous" : "Connectez-vous à votre espace personnel"}
-            </p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Bon retour</h2>
+            <p className="text-sm text-gray-500 mt-1">Connectez-vous à votre espace personnel</p>
           </div>
 
-          {!showReset ? (
-            <>
-              <form onSubmit={handleLogin} className="space-y-5">
+          <form onSubmit={handleLogin} className="space-y-5">
 
-                {/* Email */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="email" className="text-sm font-medium text-gray-700">Adresse email</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
-                      </svg>
-                    </span>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="votre@email.com"
-                      value={email}
-                      onChange={(e) => { setEmail(e.target.value); setLoginError(""); }}
-                      required
-                      className="input-focus h-11 text-sm rounded-xl border-gray-200 pl-9"
-                      disabled={loading}
-                    />
-                  </div>
-                </div>
-
-                {/* Mot de passe */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center">
-                    <Label htmlFor="password" className="text-sm font-medium text-gray-700">Mot de passe</Label>
-                    <button
-                      type="button"
-                      onClick={() => window.location.href = "/forgot-password"}
-                      className="text-xs text-[#2a5298] hover:text-[#1e3c72] hover:underline font-medium"
-                    >
-                      Mot de passe oublié ?
-                    </button>
-                  </div>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                      </svg>
-                    </span>
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => { setPassword(e.target.value); setLoginError(""); }}
-                      required
-                      className="input-focus h-11 text-sm rounded-xl border-gray-200 pl-9 pr-10"
-                      disabled={loading}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                      tabIndex={-1}
-                    >
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Message d'erreur inline */}
-                {loginError && (
-                  <div className="flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2.5 text-sm text-red-600">
-                    <svg className="shrink-0 mt-0.5" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>
-                    </svg>
-                    {loginError}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  className="btn-gradient w-full h-11 rounded-xl text-sm font-bold text-white"
+            {/* Email */}
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-sm font-medium text-gray-700">Adresse email</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+                  </svg>
+                </span>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="votre@email.com"
+                  value={email}
+                  onChange={(e) => { setEmail(e.target.value); setLoginError(""); }}
+                  required
+                  className="input-focus h-11 text-sm rounded-xl border-gray-200 pl-9"
                   disabled={loading}
-                >
-                  {loading ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                      </svg>
-                      Connexion en cours...
-                    </span>
-                  ) : "Se connecter"}
-                </button>
-              </form>
-
-              <div className="mt-6 flex flex-col items-center gap-2">
-                <p className="text-sm text-gray-500">
-                  Pas encore de compte ?{" "}
-                  <button type="button" onClick={() => navigate('/signup')} className="text-[#2a5298] hover:text-[#1e3c72] hover:underline font-semibold">
-                    Créer un compte
-                  </button>
-                </p>
-                <button type="button" onClick={() => navigate('/')} className="text-xs text-[#2a5298] hover:underline transition-colors">
-                  ← Retour à l'accueil
-                </button>
+                />
               </div>
-            </>
-          ) : (
-            <>
-              <form onSubmit={handleResetPassword} className="space-y-5">
-                <div className="space-y-1.5">
-                  <Label htmlFor="resetEmail" className="text-sm font-medium text-gray-700">Email du compte</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
-                      </svg>
-                    </span>
-                    <Input
-                      id="resetEmail"
-                      type="email"
-                      placeholder="votre@email.com"
-                      value={resetEmail}
-                      onChange={(e) => setResetEmail(e.target.value)}
-                      required
-                      className="input-focus h-11 text-sm rounded-xl border-gray-200 pl-9"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="newPassword" className="text-sm font-medium text-gray-700">Nouveau mot de passe</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                      </svg>
-                    </span>
-                    <Input
-                      id="newPassword"
-                      type={showNewPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      required
-                      className="input-focus h-11 text-sm rounded-xl border-gray-200 pl-9 pr-10"
-                    />
-                    <button type="button" onClick={() => setShowNewPassword(!showNewPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" tabIndex={-1}>
-                      {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="confirmNewPassword" className="text-sm font-medium text-gray-700">Confirmer le mot de passe</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                      </svg>
-                    </span>
-                    <Input
-                      id="confirmNewPassword"
-                      type={showConfirmPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      value={confirmNewPassword}
-                      onChange={(e) => setConfirmNewPassword(e.target.value)}
-                      required
-                      className="input-focus h-11 text-sm rounded-xl border-gray-200 pl-9 pr-10"
-                    />
-                    <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" tabIndex={-1}>
-                      {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
-                <button
-                  type="submit"
-                  className="btn-gradient w-full h-11 rounded-xl text-sm font-bold text-white"
-                >
-                  Modifier le mot de passe
-                </button>
-              </form>
-              <div className="mt-5 text-center">
+            </div>
+
+            {/* Mot de passe */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <Label htmlFor="password" className="text-sm font-medium text-gray-700">Mot de passe</Label>
                 <button
                   type="button"
-                  onClick={() => setShowReset(false)}
-                  className="text-sm text-[#2a5298] hover:underline font-medium"
+                  onClick={() => navigate("/forgot-password")}
+                  className="text-xs text-[#2a5298] hover:text-[#1e3c72] hover:underline font-medium"
                 >
-                  ← Retour à la connexion
+                  Mot de passe oublié ?
                 </button>
               </div>
-            </>
-          )}
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  </svg>
+                </span>
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => { setPassword(e.target.value); setLoginError(""); }}
+                  required
+                  className="input-focus h-11 text-sm rounded-xl border-gray-200 pl-9 pr-10"
+                  disabled={loading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Erreur */}
+            {loginError && (
+              <div className="flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2.5 text-sm text-red-600">
+                <svg className="shrink-0 mt-0.5" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>
+                </svg>
+                {loginError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="btn-gradient w-full h-11 rounded-xl text-sm font-bold text-white"
+              disabled={loading}
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                  </svg>
+                  Connexion en cours...
+                </span>
+              ) : "Se connecter"}
+            </button>
+          </form>
+
+          <div className="mt-6 flex flex-col items-center gap-2">
+            <p className="text-sm text-gray-500">
+              Pas encore de compte ?{" "}
+              <button
+                type="button"
+                onClick={() => navigate('/signup')}
+                className="text-[#2a5298] hover:text-[#1e3c72] hover:underline font-semibold"
+              >
+                Créer un compte
+              </button>
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="text-xs text-[#2a5298] hover:underline transition-colors"
+            >
+              ← Retour à l'accueil
+            </button>
+          </div>
         </div>
 
         <p className="relative z-10 mt-6 text-xs text-white/50 text-center">

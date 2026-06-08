@@ -6,7 +6,7 @@ import { Card }     from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Save, Calculator, Building2, User, FileText, Shield, Star, Zap } from "@/components/ui/Icons";
 import { toast } from "sonner";
-import { getTarifs } from "@/services/tarifService";
+import { TARIF_DEFAULTS } from "@/services/tarifService";
 import { DataService } from "@/services/dataService";
 import OffreStep, {
   type OffrePopulation, type TarifsGroupe, OFFRE_VIDE,
@@ -64,7 +64,7 @@ function calcPrimeGroupe(
   typeGarantie: string,
   dureeAns: number,
 ): number {
-  const t    = getTarifs();
+  const t    = TARIF_DEFAULTS;
   const mult = GARANTIE_MULT[typeGarantie] ?? 1;
   const pa  = (tarifsPerso?.primeAdulte    ?? t.primeAdulte)   * mult;
   const pe  = (tarifsPerso?.primeEnfant    ?? t.primeEnfant)   * mult;
@@ -228,7 +228,7 @@ export default function PropositionGroupeForm({ onBack, onSaved }: Props) {
 
       {/* ── Prime estimée ── */}
       {nbTotal > 0 && (() => {
-        const t    = getTarifs();
+        const t    = TARIF_DEFAULTS;
         const mult = GARANTIE_MULT[typeGarantie] ?? 1;
         const pA  = offre.adultes        * (tarifsPerso?.primeAdulte    ?? t.primeAdulte)   * mult;
         const pE  = offre.enfants        * (tarifsPerso?.primeEnfant    ?? t.primeEnfant)   * mult;

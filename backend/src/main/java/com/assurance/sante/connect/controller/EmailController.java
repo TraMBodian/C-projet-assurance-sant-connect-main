@@ -4,33 +4,42 @@ import com.assurance.sante.connect.dto.ApiResponse;
 import com.assurance.sante.connect.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
+/**
+ * API d'email réservée à l'administration.
+ * Tous les endpoints requirent le rôle ADMIN — aucun envoi d'email depuis l'extérieur.
+ */
 @RestController
 @RequestMapping("/api/email")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 public class EmailController {
 
     private final EmailService emailService;
 
     @PostMapping("/send")
     public ResponseEntity<ApiResponse<String>> sendEmail(@RequestBody Map<String, String> request) {
-        String to = request.get("to");
+        String to      = request.get("to");
         String subject = request.get("subject");
-        String body = request.get("body");
-        
+        String body    = request.get("body");
+
+        if (to == null || to.isBlank() || subject == null || body == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Champs obligatoires : to, subject, body"));
+        }
+
         emailService.sendEmail(to, subject, body);
-        return ResponseEntity.ok(ApiResponse.success("Email sent successfully"));
+        return ResponseEntity.ok(ApiResponse.success("Email envoyé"));
     }
 
     @PostMapping("/temp-mapping")
     public ResponseEntity<ApiResponse<String>> storeTempEmailMapping(@RequestBody Map<String, String> request) {
         String tempEmail = request.get("temp_email");
         String realEmail = request.get("real_email");
-        
         emailService.storeTempEmailMapping(tempEmail, realEmail);
-        return ResponseEntity.ok(ApiResponse.success("Temp email mapping stored"));
+        return ResponseEntity.ok(ApiResponse.success("Mapping stocké"));
     }
 
     @GetMapping("/real-email")
@@ -43,6 +52,6 @@ public class EmailController {
     public ResponseEntity<ApiResponse<String>> confirmEmail(@RequestBody Map<String, String> request) {
         String tempEmail = request.get("temp_email");
         emailService.confirmEmail(tempEmail);
-        return ResponseEntity.ok(ApiResponse.success("Email confirmed"));
+        return ResponseEntity.ok(ApiResponse.success("Email confirmé"));
     }
 }

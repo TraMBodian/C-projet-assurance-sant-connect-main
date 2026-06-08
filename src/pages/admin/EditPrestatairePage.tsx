@@ -1,5 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "@/components/ui/Icons";
+import Breadcrumb from "@/components/admin/Breadcrumb";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -110,6 +111,11 @@ export default function EditPrestatairePage() {
         <ArrowLeft className="w-4 h-4 mr-2" /> Retour
       </Button>
     }>
+      <Breadcrumb items={[
+        { label: "Tableau de bord", path: "/dashboard" },
+        { label: "Prestataires", path: "/admin/prestataires" },
+        { label: "Modifier prestataire" },
+      ]} />
       <div className="flex items-start justify-center pt-4">
         <div className="w-full max-w-2xl space-y-4">
 

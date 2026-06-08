@@ -29,6 +29,12 @@ public class UserService {
         return UserDto.fromEntity(user);
     }
 
+    public UserDto getUserByEmail(String email) {
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
+        return UserDto.fromEntity(user);
+    }
+
     public UserDto updateUser(Long id, UserDto userDto) {
         User user = userRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
