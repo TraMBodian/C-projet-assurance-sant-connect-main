@@ -141,6 +141,12 @@ public class ConsultationController {
                 return ResponseEntity.status(403)
                     .body(ApiResponse.error("Aucun prestataire n'est rattaché à votre compte"));
             }
+            // R2 : interdiction de l'auto-association — le patient doit être assigné au prestataire
+            if (!medicalAccessService.canAccessPatient(auth, request.getAssureId())) {
+                return ResponseEntity.status(403)
+                    .body(ApiResponse.error("Accès refusé : ce patient ne vous est pas assigné. "
+                        + "Une assignation (admin ou consentement du patient) est requise."));
+            }
             prestataireId = selfId;
         }
         if (prestataireId != null) {

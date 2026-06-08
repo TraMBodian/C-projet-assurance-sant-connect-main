@@ -6,7 +6,6 @@ import com.assurance.sante.connect.entity.Assure;
 import com.assurance.sante.connect.entity.Sinistre;
 import com.assurance.sante.connect.entity.User;
 import com.assurance.sante.connect.repository.AssureRepository;
-import com.assurance.sante.connect.repository.ConsultationRepository;
 import com.assurance.sante.connect.repository.SinistreRepository;
 import com.assurance.sante.connect.repository.UserRepository;
 import com.assurance.sante.connect.service.SinistreService;
@@ -37,7 +36,6 @@ public class SinistreController {
     private final UserRepository userRepository;
     private final AssureRepository assureRepository;
     private final SinistreRepository sinistreRepository;
-    private final ConsultationRepository consultationRepository;
     private final MedicalAccessService medicalAccessService;
     private final MedicalAuditService medicalAuditService;
     private final ClientIpResolver clientIpResolver;
@@ -63,16 +61,11 @@ public class SinistreController {
         }
 
         if (role == User.UserRole.PRESTATAIRE) {
-            // Disclosure : un prestataire ne voit QUE les sinistres de ses patients associés
-            // (assurés avec qui il a au moins une consultation), jamais tous les sinistres.
-            Long prestId = medicalAccessService.currentPrestataireId(auth);
-            if (prestId == null) {
+            // Un prestataire ne voit QUE les sinistres de ses patients ASSIGNÉS (ownership réel).
+            java.util.Set<Long> assureIds = medicalAccessService.assignedPatientIds(auth);
+            if (assureIds.isEmpty()) {
                 return ResponseEntity.ok(ApiResponse.success(Map.of("sinistres", List.of())));
             }
-            java.util.Set<Long> assureIds = consultationRepository.findByPrestataireId(prestId).stream()
-                .filter(c -> c.getAssure() != null)
-                .map(c -> c.getAssure().getId())
-                .collect(java.util.stream.Collectors.toSet());
             List<Sinistre> sinistres = sinistreService.getAllSinistres().stream()
                 .filter(s -> s.getAssure() != null && assureIds.contains(s.getAssure().getId()))
                 .collect(java.util.stream.Collectors.toList());

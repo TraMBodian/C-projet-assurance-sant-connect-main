@@ -593,6 +593,43 @@ export class ApiClient {
   async getCartes() {
     return this.request<{ cartes: any[] }>('/cartes');
   }
+
+  // ─── Assignations patient ↔ prestataire (R2) ───────────────────────────────
+
+  async getAssignments() {
+    return this.request<any[]>('/assignments');
+  }
+
+  /** ADMIN : octroi direct d'une relation (ACTIVE). */
+  async grantAssignment(assureId: number, prestataireId: number) {
+    return this.request<any>('/assignments', {
+      method: 'POST',
+      body: JSON.stringify({ assureId, prestataireId }),
+    });
+  }
+
+  /** PRESTATAIRE : demande de consentement au patient (PENDING). */
+  async requestAssignment(assureId: number) {
+    return this.request<any>('/assignments/request', {
+      method: 'POST',
+      body: JSON.stringify({ assureId }),
+    });
+  }
+
+  /** CLIENT (patient) : accepte une demande le concernant. */
+  async acceptAssignment(id: number) {
+    return this.request<any>(`/assignments/${id}/accept`, { method: 'PUT' });
+  }
+
+  /** CLIENT (patient) : refuse une demande le concernant. */
+  async rejectAssignment(id: number) {
+    return this.request<any>(`/assignments/${id}/reject`, { method: 'PUT' });
+  }
+
+  /** ADMIN ou patient : révoque une relation. */
+  async revokeAssignment(id: number) {
+    return this.request<any>(`/assignments/${id}/revoke`, { method: 'PUT' });
+  }
 }
 
 export const apiClient = new ApiClient();

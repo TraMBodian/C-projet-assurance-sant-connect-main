@@ -5,7 +5,6 @@ import com.assurance.sante.connect.dto.ApiResponse;
 import com.assurance.sante.connect.entity.Assure;
 import com.assurance.sante.connect.entity.User;
 import com.assurance.sante.connect.repository.AssureRepository;
-import com.assurance.sante.connect.repository.ConsultationRepository;
 import com.assurance.sante.connect.repository.UserRepository;
 import com.assurance.sante.connect.service.AssureService;
 import com.assurance.sante.connect.service.MedicalAccessService;
@@ -34,7 +33,6 @@ public class AssureController {
     private final AssureService assureService;
     private final UserRepository userRepository;
     private final AssureRepository assureRepository;
-    private final ConsultationRepository consultationRepository;
     private final MedicalAccessService medicalAccessService;
     private final MedicalAuditService medicalAuditService;
     private final ClientIpResolver clientIpResolver;
@@ -83,16 +81,8 @@ public class AssureController {
         }
 
         if (role == User.UserRole.PRESTATAIRE) {
-            // R1 : un prestataire ne voit QUE ses patients associés, jamais toute la base
-            Long prestId = medicalAccessService.currentPrestataireId(auth);
-            if (prestId == null) {
-                return ResponseEntity.ok(ApiResponse.success(Map.of("assures", List.of())));
-            }
-            java.util.Set<Long> assureIds = consultationRepository.findByPrestataireId(prestId).stream()
-                .filter(c -> c.getAssure() != null)
-                .map(c -> c.getAssure().getId())
-                .collect(java.util.stream.Collectors.toSet());
-            List<AssureDto> result = assureIds.stream()
+            // R1/R2 : un prestataire ne voit QUE ses patients ASSIGNÉS (ownership réel)
+            List<AssureDto> result = medicalAccessService.assignedPatientIds(auth).stream()
                 .map(assureService::getAssureById)
                 .collect(java.util.stream.Collectors.toList());
             return ResponseEntity.ok(ApiResponse.success(Map.of("assures", result)));

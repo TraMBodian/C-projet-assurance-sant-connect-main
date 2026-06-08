@@ -11,6 +11,8 @@ import com.assurance.sante.connect.repository.AssureRepository;
 import com.assurance.sante.connect.repository.ConsultationRepository;
 import com.assurance.sante.connect.repository.DocumentMedicalRepository;
 import com.assurance.sante.connect.repository.PrescriptionRepository;
+import com.assurance.sante.connect.entity.PatientProviderAssignment.AssignmentStatus;
+import com.assurance.sante.connect.repository.PatientProviderAssignmentRepository;
 import com.assurance.sante.connect.repository.PrestataireRepository;
 import com.assurance.sante.connect.repository.SinistreRepository;
 import com.assurance.sante.connect.repository.UserRepository;
@@ -19,6 +21,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Service centralisé d'autorisation d'accès aux données médicales (BOLA / IDOR).
@@ -45,6 +49,7 @@ public class MedicalAccessService {
     private final PrescriptionRepository   prescriptionRepository;
     private final SinistreRepository       sinistreRepository;
     private final DocumentMedicalRepository documentRepository;
+    private final PatientProviderAssignmentRepository assignmentRepository;
 
     // ── Helpers de rôle ────────────────────────────────────────────────────────
 
@@ -91,11 +96,29 @@ public class MedicalAccessService {
         if (isPrestataire(auth)) {
             Long prestId = currentPrestataireId(auth);
             if (prestId == null) return false;
-            // Associé au patient s'il existe au moins une consultation entre eux
-            return consultationRepository.findByAssureId(patientId).stream()
-                .anyMatch(c -> c.getPrestataire() != null && prestId.equals(c.getPrestataire().getId()));
+            // Ownership RÉEL : une assignation ACTIVE doit exister (créée par un ADMIN
+            // ou validée par le patient). Une consultation auto-créée ne suffit plus.
+            return assignmentRepository
+                .existsByPrestataireIdAndAssureIdAndStatus(prestId, patientId, AssignmentStatus.ACTIVE);
         }
         return false;
+    }
+
+    /** Vrai si une assignation ACTIVE lie le prestataire connecté à ce patient. */
+    public boolean hasActiveAssignment(Authentication auth, Long patientId) {
+        Long prestId = currentPrestataireId(auth);
+        return prestId != null && patientId != null
+            && assignmentRepository.existsByPrestataireIdAndAssureIdAndStatus(prestId, patientId, AssignmentStatus.ACTIVE);
+    }
+
+    /** Identifiants des patients assignés (ACTIVE) au prestataire connecté. */
+    public Set<Long> assignedPatientIds(Authentication auth) {
+        Long prestId = currentPrestataireId(auth);
+        if (prestId == null) return Set.of();
+        return assignmentRepository.findByPrestataireIdAndStatus(prestId, AssignmentStatus.ACTIVE).stream()
+            .filter(a -> a.getAssure() != null)
+            .map(a -> a.getAssure().getId())
+            .collect(Collectors.toSet());
     }
 
     // ── Accès consultation ───────────────────────────────────────────────────────
