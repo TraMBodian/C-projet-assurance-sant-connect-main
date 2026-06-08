@@ -67,3 +67,4 @@ L'application supporte 3 bases de données :
 - Email : bassniang7@yahoo.fr
 "# papsa" 
 "# papsa" 
+"# papsassurances" 
